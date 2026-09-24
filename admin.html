@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — Blue Doors Surabaya</title>
+  <meta name="robots" content="noindex, nofollow">
+  
+  <!-- Fonts & Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  
+  <style>
+    /* Dedicated Admin Portal Styling Extensions */
+    .admin-layout {
+      display: flex;
+      min-height: 100vh;
+      background-color: var(--bg-dark);
+    }
+    
+    .admin-sidebar {
+      width: 260px;
+      background-color: var(--primary-navy);
+      color: #FFFFFF;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      transition: transform var(--transition-normal);
+      z-index: 500;
+    }
+    
+    .admin-sidebar-header {
+      padding: 1.5rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .admin-sidebar-header img {
+      height: 44px;
+      width: auto;
+    }
+
+    .admin-sidebar-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    .admin-sidebar-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      background-color: var(--primary-brand);
+      color: #FFFFFF;
+      padding: 0.15rem 0.5rem;
+      border-radius: var(--radius-pill);
+      text-transform: uppercase;
+    }
+
+    .admin-nav {
+      list-style: none;
+      padding: 1.25rem 0.75rem;
+      flex-grow: 1;
+    }
+
+    .admin-nav-item {
+      margin-bottom: 0.4rem;
+    }
+
+    .admin-nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.75rem 1rem;
+      color: #CBD5E1;
+      font-weight: 600;
+      font-size: 0.9375rem;
+      border-radius: var(--radius-md);
+      transition: all var(--transition-fast);
+      cursor: pointer;
+    }
+
+    .admin-nav-link:hover,
+    .admin-nav-link.active {
+      color: #FFFFFF;
+      background-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .admin-nav-link.active {
+      background-color: var(--primary-brand);
+      box-shadow: 0 4px 12px rgba(200, 92, 50, 0.3);
+    }
+
+    .admin-main {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .admin-topbar {
+      background-color: var(--surface-white);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 1rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 400;
+    }
+
+    .admin-page-title {
+      font-family: var(--font-heading);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--primary-navy);
+    }
+
+    .admin-user-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .admin-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: var(--primary-navy);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .admin-content {
+      padding: 2rem 1.75rem;
+      flex-grow: 1;
+      overflow-y: auto;
+    }
+
+    /* KPI Summary Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .kpi-card {
+      background-color: var(--surface-white);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .kpi-title {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+
+    .kpi-value {
+      font-family: var(--font-heading);
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--primary-navy);
+    }
+
+    .kpi-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      background-color: var(--accent-gold-light);
+      color: var(--accent-gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.35rem;
+    }
+
+    /* Data Tables Component */
+    .table-card {
+      background-color: var(--surface-white);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    .table-card-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .table-card-title {
+      font-family: var(--font-heading);
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary-navy);
+    }
+
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    .admin-table th {
+      background-color: var(--surface-dark);
+      color: var(--primary-navy);
+      font-weight: 700;
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      white-space: nowrap;
+    }
+
+    .admin-table td {
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+    }
+
+    .admin-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.7rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .status-available { background-color: #DEF7EC; color: #03543F; }
+    .status-empty { background-color: #FDE8E8; color: #9B1C1C; }
+    .status-pending { background-color: #FEF08A; color: #854D0E; }
+    .status-confirmed { background-color: #E0E7FF; color: #3730A3; }
+    .status-completed { background-color: #D1FAE5; color: #065F46; }
+
+    .action-btn-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      justify-content: flex-start;
+    }
+
+    .btn-action-main {
+      min-width: 100px;
+      text-align: center;
+      justify-content: center;
+    }
+
+    .btn-action-secondary {
+      min-width: 65px;
+      text-align: center;
+      justify-content: center;
+    }
+
+    .btn-sm {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      min-height: 36px;
+    }
+
+    .admin-table th.col-action,
+    .admin-table td.col-action {
+      min-width: 200px;
+      width: 200px;
+      white-space: nowrap;
+    }
+
+    /* Tab Sections Switching */
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Mobile Sidebar Toggle & Drawer */
+    .admin-sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 490;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity var(--transition-normal);
+    }
+
+    @media (max-width: 992px) {
+      .admin-sidebar {
+        position: fixed;
+        top: 0;
+        left: -260px;
+        height: 100vh;
+      }
+
+      .admin-sidebar.active {
+        transform: translateX(260px);
+      }
+
+      .admin-sidebar-overlay.active {
+        opacity: 1;
+        visibility: visible;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Skip Navigation for Accessibility -->
+  <a href="#admin-main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Dedicated Admin Authentication Gatekeeper Overlay -->
+  <div id="admin-auth-overlay" style="position: fixed; inset: 0; background: linear-gradient(135deg, #0F2C59 0%, #1F509A 100%); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 1.5rem;">
+    <div style="background: var(--surface-white); width: 100%; max-width: 440px; border-radius: var(--radius-lg); padding: 2.5rem 2rem; box-shadow: var(--shadow-lg); border: 1px solid var(--border-subtle);">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <img src="logo.png" alt="Blue Doors Logo" style="height: 64px; margin: 0 auto 1rem auto; object-fit: contain;">
+        <h2 style="font-family: var(--font-heading); font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 0.25rem;">Portal Akses Staff & Admin</h2>
+        <p style="font-size: 0.875rem; color: var(--text-muted);">Verifikasi otentikasi sebelum masuk ke Dashboard Admin Blue Doors.</p>
+      </div>
+
+      <form id="admin-gatekeeper-form">
+        <div class="form-group">
+          <label class="form-label" for="gk-username">Username Admin</label>
+          <input type="text" id="gk-username" class="form-control" placeholder="Masukkan username" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="gk-password">Kata Sandi Admin</label>
+          <input type="password" id="gk-password" class="form-control" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 1rem; margin-top: 0.5rem;">
+          <i class="fa-solid fa-shield-halved"></i> Masuk Dashboard Admin
+        </button>
+
+        <a href="index.html" class="btn btn-secondary" style="width: 100%; font-size: 0.875rem; text-decoration: none;">
+          <i class="fa-solid fa-arrow-left"></i> Kembali ke Website Utama
+        </a>
+      </form>
+    </div>
+  </div>
+
+  <div class="admin-layout" id="admin-dashboard-layout" style="display: none;">
+    
+    <!-- Sidebar Navigation -->
+    <div class="admin-sidebar-overlay" id="admin-sidebar-overlay"></div>
+    <aside class="admin-sidebar" id="admin-sidebar" aria-label="Admin Navigation">
+      <div class="admin-sidebar-header">
+        <img src="logo.png" alt="Blue Doors Logo">
+        <div>
+          <div class="admin-sidebar-title">BLUE DOORS</div>
+          <span class="admin-sidebar-badge">ADMIN PORTAL</span>
+        </div>
+      </div>
+
+      <ul class="admin-nav">
+        <li class="admin-nav-item">
+          <a class="admin-nav-link active" data-tab="tab-overview">
+            <i class="fa-solid fa-chart-pie"></i> <span>Overview</span>
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a class="admin-nav-link" data-tab="tab-menu">
+            <i class="fa-solid fa-mug-saucer"></i> <span>Stok & Menu</span>
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a class="admin-nav-link" data-tab="tab-booking">
+            <i class="fa-solid fa-calendar-check"></i> <span>Booking Meja</span>
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a class="admin-nav-link" data-tab="tab-users">
+            <i class="fa-solid fa-users"></i> <span>Pelanggan / User</span>
+          </a>
+        </li>
+      </ul>
+
+      <div style="padding: 1.25rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+        <a href="index.html" class="btn btn-sm" style="width: 100%; background-color: rgba(255, 255, 255, 0.1); color: #FFFFFF; border: 1px solid rgba(255, 255, 255, 0.2); text-decoration: none;">
+          <i class="fa-solid fa-arrow-left"></i> Halaman Publik
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="admin-main">
+      
+      <!-- Top Navigation Bar -->
+      <header class="admin-topbar">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <button class="mobile-menu-toggle" id="admin-menu-toggle" aria-label="Buka Menu Admin">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <h1 class="admin-page-title" id="current-tab-title">Dashboard Overview</h1>
+        </div>
+
+        <div class="admin-user-info">
+          <div style="text-align: right;">
+            <div style="font-weight: 700; font-size: 0.9rem; color: var(--primary-navy);">Manager Cafe</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Blue Doors Surabaya</div>
+          </div>
+          <div class="admin-avatar">BD</div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="logoutAdmin()" title="Keluar dari Admin" style="color: #DC2626; border-color: #FCA5A5; background-color: #FEF2F2; margin-left: 0.5rem;">
+            <i class="fa-solid fa-right-from-bracket"></i> Keluar
+          </button>
+        </div>
+      </header>
+
+      <!-- Tab Content Area -->
+      <main class="admin-content" id="admin-main-content">
+
+        <!-- TAB 1: OVERVIEW DASHBOARD -->
+        <section class="tab-content active" id="tab-overview">
+          
+          <!-- KPI Summary Grid -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div>
+                <div class="kpi-title">Estimasi Penjualan Hari Ini</div>
+                <div class="kpi-value" id="kpi-revenue">Rp 1.840.000</div>
+              </div>
+              <div class="kpi-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+            </div>
+
+            <div class="kpi-card">
+              <div>
+                <div class="kpi-title">Reservasi Meja Aktif</div>
+                <div class="kpi-value" id="kpi-bookings">8 Meja</div>
+              </div>
+              <div class="kpi-icon"><i class="fa-solid fa-chair"></i></div>
+            </div>
+
+            <div class="kpi-card">
+              <div>
+                <div class="kpi-title">Item Menu Tersedia</div>
+                <div class="kpi-value" id="kpi-menu-count">18 Item</div>
+              </div>
+              <div class="kpi-icon"><i class="fa-solid fa-mug-hot"></i></div>
+            </div>
+
+            <div class="kpi-card">
+              <div>
+                <div class="kpi-title">Pelanggan Terdaftar</div>
+                <div class="kpi-value" id="kpi-users-count">24 User</div>
+              </div>
+              <div class="kpi-icon"><i class="fa-solid fa-user-check"></i></div>
+            </div>
+          </div>
+
+          <!-- Quick Recent Reservations Overview Table -->
+          <div class="table-card">
+            <div class="table-card-header">
+              <h2 class="table-card-title">Reservasi Terbaru Hari Ini</h2>
+              <button class="btn btn-primary btn-sm" onclick="switchAdminTab('tab-booking')">Lihat Semua</button>
+            </div>
+            <div class="table-wrapper">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Kode Booking</th>
+                    <th>Nama Pemesan</th>
+                    <th>WhatsApp</th>
+                    <th>Tanggal & Jam</th>
+                    <th>Jumlah Tamu</th>
+                    <th>Area</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="overview-booking-rows">
+                  <!-- Rendered dynamically by admin.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 2: MANAJEMEN STOK & MENU -->
+        <section class="tab-content" id="tab-menu">
+          <div class="table-card">
+            <div class="table-card-header">
+              <div>
+                <h2 class="table-card-title">Katalog & Stok Minuman Kopi</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Kontrol ketersediaan stok & penyesuaian harga menu secara real-time.</p>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="openAdminModal('add-menu-modal')">
+                <i class="fa-solid fa-plus"></i> Tambah Menu Baru
+              </button>
+            </div>
+            <div class="table-wrapper">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Gambar</th>
+                    <th>Nama Menu</th>
+                    <th>Kategori</th>
+                    <th>Harga (IDR)</th>
+                    <th>Status Stok</th>
+                    <th>Aksi Kontrol</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-menu-rows">
+                  <!-- Rendered dynamically by admin.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 3: MANAJEMEN BOOKING KURSI / MEJA -->
+        <section class="tab-content" id="tab-booking">
+          <div class="table-card">
+            <div class="table-card-header">
+              <div>
+                <h2 class="table-card-title">Daftar Reservasi Meja Cafe</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Kelola konfirmasi, pembatalan, dan area tempat duduk pelanggan.</p>
+              </div>
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-primary btn-sm" onclick="openAdminModal('add-booking-modal')">
+                  <i class="fa-solid fa-calendar-plus"></i> Tambah Reservasi
+                </button>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Kode Referensi</th>
+                    <th>Nama Tamu</th>
+                    <th>WhatsApp</th>
+                    <th>Tanggal / Jam</th>
+                    <th>Tamu</th>
+                    <th>Pilihan Area</th>
+                    <th>Status</th>
+                    <th>Aksi Kontrol</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-booking-rows">
+                  <!-- Rendered dynamically by admin.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 4: MANAJEMEN USER & PELANGGAN -->
+        <section class="tab-content" id="tab-users">
+          <div class="table-card">
+            <div class="table-card-header">
+              <div>
+                <h2 class="table-card-title">Direktori Pelanggan & User</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Daftar pengguna terdaftar & kontak WhatsApp pelanggan setia.</p>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID User</th>
+                    <th>Nama Pelanggan</th>
+                    <th>Nomor WhatsApp</th>
+                    <th>Area Favorit</th>
+                    <th>Total Kunjungan</th>
+                    <th>Status User</th>
+                    <th>Aksi Kontak</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-user-rows">
+                  <!-- Rendered dynamically by admin.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal Add Menu Item -->
+  <div class="modal-overlay" id="add-menu-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Tambah Menu Baru</h3>
+        <button class="btn-close-drawer" onclick="closeAdminModal('add-menu-modal')" aria-label="Tutup Modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="add-menu-form">
+        <div class="form-group">
+          <label class="form-label" for="am-name">Nama Minuman</label>
+          <input type="text" id="am-name" class="form-control" placeholder="Contoh: Sea Salt Caramel Latte" required>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="am-category">Kategori</label>
+            <select id="am-category" class="form-control" required>
+              <option value="specialty">Specialty Latte</option>
+              <option value="black">Espresso & Black</option>
+              <option value="white">White Coffee</option>
+              <option value="chocolate">Cokelat & Mocha</option>
+              <option value="noncoffee">Non-Kopi & Tea</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="am-price">Harga (Rp)</label>
+            <input type="number" id="am-price" class="form-control" placeholder="45000" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="am-desc">Deskripsi Singkat</label>
+          <textarea id="am-desc" class="form-control" rows="3" placeholder="Deskripsi rasa kopi..." required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+          <i class="fa-solid fa-save"></i> Simpan Menu
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Add Manual Booking -->
+  <div class="modal-overlay" id="add-booking-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Tambah Reservasi Manual</h3>
+        <button class="btn-close-drawer" onclick="closeAdminModal('add-booking-modal')" aria-label="Tutup Modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="add-booking-form">
+        <div class="form-group">
+          <label class="form-label" for="ab-name">Nama Pemesan</label>
+          <input type="text" id="ab-name" class="form-control" placeholder="Nama Pelanggan" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ab-phone">Nomor WhatsApp</label>
+          <input type="tel" id="ab-phone" class="form-control" placeholder="081234567890" required>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="ab-date">Tanggal</label>
+            <input type="date" id="ab-date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ab-time">Jam</label>
+            <input type="time" id="ab-time" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="ab-guests">Jumlah Tamu</label>
+            <select id="ab-guests" class="form-control" required>
+              <option value="1-2">1 - 2 Orang</option>
+              <option value="3-4">3 - 4 Orang</option>
+              <option value="5-8">5 - 8 Orang</option>
+              <option value="9+">9+ Orang</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ab-area">Area</label>
+            <select id="ab-area" class="form-control" required>
+              <option value="Indoor AC">Indoor AC</option>
+              <option value="Outdoor Garden">Outdoor Garden</option>
+              <option value="Espresso Bar">Espresso Bar</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+          <i class="fa-solid fa-check"></i> Simpan Reservasi
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

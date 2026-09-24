@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daftar Menu & Produk Kopi — Blue Doors Surabaya</title>
+  <meta name="description" content="Jelajahi 18 daftar menu kopi artisanal, specialty latte, espresso murni, dan racikan non-kopi segar di Blue Doors Surabaya. Pesan online langsung.">
+  
+  <!-- Fonts & Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Midtrans Snap Payment Gateway SDK -->
+  <script type="text/javascript" src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="Mid-client-FzQMnirDDlnRe99U"></script>
+
+</head>
+<body>
+
+  <!-- Skip Navigation for Accessibility (R-32) -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Top Announcement Bar -->
+  <div class="announcement-bar">
+    <span class="highlight-tag">Katalog Menu Online</span>
+    <span>Pilih Kopi Favorit Anda & Pesan Melalui Sistem Keranjang Online!</span>
+  </div>
+
+  <!-- Main Navigation Header -->
+  <header class="navbar">
+    <div class="navbar-container">
+      <a href="index.html" class="brand-logo" aria-label="Blue Doors Surabaya Homepage">
+        <img src="logo.png" alt="Blue Doors Surabaya Logo">
+        <div class="brand-title-group">
+          <span class="brand-name">BLUE DOORS</span>
+          <span class="brand-subtitle">SURABAYA</span>
+        </div>
+      </a>
+
+      <ul class="nav-menu">
+        <li><a href="index.html" class="nav-link">Home</a></li>
+        <li><a href="produk.html" class="nav-link active">Menu & Produk</a></li>
+        <li><a href="about.html" class="nav-link">Tentang Kami</a></li>
+        <li><a href="#booking" class="nav-link btn-open-booking">Reservasi Meja</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <button class="btn btn-cart btn-cart-toggle" aria-label="Buka Keranjang Belanja">
+          <i class="fa-solid fa-bag-shopping"></i>
+          <span>Keranjang</span>
+          <span class="cart-badge-count">0</span>
+        </button>
+        <button class="btn btn-secondary btn-login-toggle" id="btn-login-header" aria-label="Buka Login">
+          <i class="fa-solid fa-user"></i>
+          <span>Masuk</span>
+        </button>
+        <button class="mobile-menu-toggle" aria-label="Buka Menu Navigasi">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main id="main-content">
+    
+    <!-- Menu Page Header Banner -->
+    <section class="menu-page-header">
+      <div class="container">
+        <span class="section-tag"><i class="fa-solid fa-mug-hot"></i> Catalog Menu & Produk</span>
+        <h1 class="section-title">Koleksi Kopi Artisanal <span>& Racikan Spesial</span></h1>
+        <p class="section-subtitle">Semua minuman diseduh dan diracik menggunakan biji kopi pilihan serta bahan segar alami khas Blue Doors Surabaya.</p>
+      </div>
+    </section>
+
+    <!-- Menu Catalog Section -->
+    <section class="section" style="padding-top: 3.5rem;">
+      <div class="container">
+
+        <!-- Category Filter Bar -->
+        <div class="filter-bar">
+          <button class="filter-btn active" data-category="all">Semua Menu (18)</button>
+          <button class="filter-btn" data-category="specialty">Specialty Latte</button>
+          <button class="filter-btn" data-category="black">Espresso & Black</button>
+          <button class="filter-btn" data-category="white">White Coffee</button>
+          <button class="filter-btn" data-category="chocolate">Cokelat & Mocha</button>
+          <button class="filter-btn" data-category="noncoffee">Non-Kopi & Tea</button>
+        </div>
+
+        <!-- Dynamic Product Grid (Populated by app.js) -->
+        <div class="product-grid" id="product-grid-container">
+          <!-- Rendered by JavaScript -->
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- Slide-Over Shopping Cart Drawer -->
+  <div class="cart-drawer-overlay" id="cart-overlay"></div>
+  <aside class="cart-drawer" id="cart-drawer" aria-label="Keranjang Belanja">
+    <div class="cart-header">
+      <h3><i class="fa-solid fa-bag-shopping"></i> Keranjang Anda</h3>
+      <button class="btn-close-drawer" id="close-cart-btn" aria-label="Tutup Keranjang">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="cart-body" id="cart-items-body">
+      <!-- Dynamic Items -->
+    </div>
+    <div class="cart-footer">
+      <div class="cart-summary-row">
+        <span>Subtotal</span>
+        <span id="cart-total-price">Rp 0</span>
+      </div>
+      <button class="btn btn-primary cart-checkout-btn" id="cart-checkout-btn" disabled>
+        Lanjutkan Pemesanan <i class="fa-solid fa-arrow-right"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Checkout Order Modal -->
+  <div class="modal-overlay" id="checkout-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Konfirmasi Pemesanan</h3>
+        <button class="btn-close-drawer" onclick="closeModal('checkout-modal')" aria-label="Tutup Modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="checkout-form">
+        <div class="form-group">
+          <label class="form-label" for="co-name">Nama Lengkap</label>
+          <input type="text" id="co-name" class="form-control" placeholder="Contoh: Budi Santoso" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="co-phone">Nomor WhatsApp / HP</label>
+          <input type="tel" id="co-phone" class="form-control" placeholder="08123456789" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="co-method">Tipe Pemesanan</label>
+          <select id="co-method" class="form-control" required>
+            <option value="Dine-in / Minum di Tempat">Dine-in (Minum di Tempat)</option>
+            <option value="Takeaway / Bawa Pulang">Takeaway (Bawa Pulang)</option>
+            <option value="Delivery / Kurir Surabaya">Delivery Area Surabaya</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+          <i class="fa-solid fa-paper-plane"></i> Kirim Pesanan
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Table Booking Reservation Modal -->
+  <div class="modal-overlay" id="booking-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Reservasi Meja Blue Doors</h3>
+        <button class="btn-close-drawer" onclick="closeModal('booking-modal')" aria-label="Tutup Modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="booking-form">
+        <div class="form-group">
+          <label class="form-label" for="bk-name">Nama Lengkap Pemesan</label>
+          <input type="text" id="bk-name" class="form-control" placeholder="Nama Anda" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="bk-phone">Nomor WhatsApp</label>
+          <input type="tel" id="bk-phone" class="form-control" placeholder="081234567890" required>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="bk-date">Tanggal Kunjungan</label>
+            <input type="date" id="bk-date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bk-time">Jam Kunjungan</label>
+            <input type="time" id="bk-time" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="bk-guests">Jumlah Tamu</label>
+            <select id="bk-guests" class="form-control" required>
+              <option value="1-2">1 - 2 Orang</option>
+              <option value="3-4">3 - 4 Orang</option>
+              <option value="5-8">5 - 8 Orang</option>
+              <option value="9+">Lebih dari 8 Orang</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bk-area">Pilihan Area</label>
+            <select id="bk-area" class="form-control" required>
+              <option value="Indoor AC">Indoor (AC & Non-Smoking)</option>
+              <option value="Outdoor Garden">Outdoor Garden Area</option>
+              <option value="Espresso Bar">Espresso Bar Counter</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+          <i class="fa-solid fa-check"></i> Konfirmasi Reservasi
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer Section -->
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="brand-logo">
+          <img src="logo.png" alt="Blue Doors Surabaya Logo">
+          <div class="brand-title-group">
+            <span class="brand-name">BLUE DOORS</span>
+            <span class="brand-subtitle">SURABAYA</span>
+          </div>
+        </a>
+        <p>Destinasi kopi artisanal di Surabaya yang menghadirkan kenikmatan rasa murni dalam setiap cangkir racikan.</p>
+      </div>
+
+      <div>
+        <h4 class="footer-title">Navigasi Utama</h4>
+        <ul class="footer-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="produk.html">Menu & Produk</a></li>
+          <li><a href="about.html">Tentang Kami</a></li>
+          <li><a href="#booking" class="btn-open-booking">Reservasi Meja</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="footer-title">Kategori Menu</h4>
+        <ul class="footer-links">
+          <li><a href="produk.html">Specialty Latte</a></li>
+          <li><a href="produk.html">Espresso & Black</a></li>
+          <li><a href="produk.html">Mocha & Cokelat</a></li>
+          <li><a href="produk.html">Non-Kopi & Matcha</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="footer-title">Jam Operasional & Lokasi</h4>
+        <p style="margin-bottom: 0.5rem;"><i class="fa-solid fa-clock" style="color: var(--accent-gold);"></i> Setiap Hari: 07.00 - 22.00 WIB</p>
+        <p><i class="fa-solid fa-location-dot" style="color: var(--accent-gold);"></i> Jl. Jalan Raya Surabaya, Jawa Timur</p>
+      </div>
+    </div>
+
+    <div class="container footer-bottom">
+      <p>&copy; 2026 Blue Doors Surabaya. All rights reserved.</p>
+      <div style="display: flex; gap: 1.5rem;">
+        <span>Artisanal Coffee House</span>
+        <span>Surabaya, Indonesia</span>
+      </div>
+    </div>
+  <!-- Login & Registration Modal -->
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="login-modal-title">Masuk ke Blue Doors</h3>
+        <button class="btn-close-drawer" onclick="closeModal('login-modal')" aria-label="Tutup Modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label" for="login-email">Nomor WhatsApp / Email / Username</label>
+          <input type="text" id="login-email" class="form-control" placeholder="Contoh: 081234567890 atau email@domain.com" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="login-password">Kata Sandi / PIN</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+          <i class="fa-solid fa-right-to-bracket"></i> Masuk Sekarang
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" style="display: none;">
+        <div class="form-group">
+          <label class="form-label" for="reg-name">Nama Lengkap</label>
+          <input type="text" id="reg-name" class="form-control" placeholder="Masukkan nama lengkap Anda" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reg-contact">Nomor WhatsApp / Email</label>
+          <input type="text" id="reg-contact" class="form-control" placeholder="Contoh: 081234567890 atau email@domain.com" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reg-password">Kata Sandi Baru</label>
+          <input type="password" id="reg-password" class="form-control" placeholder="Buat kata sandi aman" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reg-password-confirm">Konfirmasi Kata Sandi</label>
+          <input type="password" id="reg-password-confirm" class="form-control" placeholder="Ulangi kata sandi" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+          <i class="fa-solid fa-user-plus"></i> Buat Akun Baru
+        </button>
+      </form>
+
+      <!-- Auth Mode Toggle Link -->
+      <div id="auth-toggle-box" style="text-align: center; margin-top: 1.25rem; font-size: 0.875rem; color: var(--text-muted); border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+        <span id="auth-toggle-text">Belum memiliki akun?</span>
+        <button type="button" id="btn-toggle-auth" onclick="toggleAuthMode()" style="background: none; border: none; color: var(--primary-brand); font-weight: 700; cursor: pointer; text-decoration: underline; margin-left: 0.3rem;">Daftar Akun Baru</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

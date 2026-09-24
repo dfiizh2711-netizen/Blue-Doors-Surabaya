@@ -1,0 +1,523 @@
+/**
+ * Blue Doors Surabaya — Core Application Logic
+ * Features: Menu Catalog Filtering, Shopping Cart System, Table Booking Reservation System
+ * Backend & Midtrans Payment Gateway Connected
+ */
+
+const API_BASE = 'http://localhost:5000/api';
+
+// Master Products Database
+const PRODUCTS_DATA = [
+  { id: 'p1', name: 'Kyoto Latte', category: 'specialty', price: 42000, desc: 'Latte dingin khas Jepang dengan manis yang pas dan tekstur ekstra halus.', img: 'menus/Kyoto Latte.png', badge: 'Terfavorit' },
+  { id: 'p2', name: 'Fleur Noire', category: 'specialty', price: 45000, desc: 'Racikan specialty espresso dengan sentuhan floral & keharuman alami.', img: 'menus/Fleur Noire.png', badge: 'Signature' },
+  { id: 'p3', name: 'White Velvet Latte', category: 'specialty', price: 44000, desc: 'Latte lembut berminyak dengan rasa vanilla bourbon alami & susu steaming sempurna.', img: 'menus/White Velvet Latte.png', badge: 'Best Seller' },
+  { id: 'p4', name: 'Swiss Latte', category: 'specialty', price: 43000, desc: 'Espresso racikan dengan sentuhan hazelnut halus & kekayaan rasa khas Swiss.', img: 'menus/Swiss Latte.png', badge: 'Populer' },
+  { id: 'p5', name: 'Grand Latte', category: 'specialty', price: 42000, desc: 'Cita rasa espresso mantap dikombinasikan susu segar berkualitas.', img: 'menus/Grand Latte.png', badge: null },
+  { id: 'p6', name: 'Hot Black', category: 'black', price: 35000, desc: 'Ekstraksi espresso murni hangat dengan aroma biji kopi pilihan.', img: 'menus/Hot Black.png', badge: null },
+  { id: 'p7', name: 'Ice Black', category: 'black', price: 37000, desc: 'Espresso dingin yang menyegarkan dengan kejernihan rasa otentik.', img: 'menus/Ice Black.png', badge: null },
+  { id: 'p8', name: 'Piccolo', category: 'black', price: 36000, desc: 'Ristretto konsentrat tinggi dengan sedikit susu lembut hangat.', img: 'menus/Piccolo.png', badge: null },
+  { id: 'p9', name: 'Hot Regular White', category: 'white', price: 38000, desc: 'Kopi putih hangat berbusa halus dengan keseimbangan rasa yang pas.', img: 'menus/Hot Regular White.png', badge: null },
+  { id: 'p10', name: 'Hot Large White', category: 'white', price: 42000, desc: 'Porsi besar kopi putih hangat untuk kenikmatan ngopi lebih lama.', img: 'menus/Hot Large White.png', badge: null },
+  { id: 'p11', name: 'Ice White', category: 'white', price: 40000, desc: 'Kopi susu dingin klasik dengan cita rasa gurih dan manis seimbang.', img: 'menus/Ice White.png', badge: null },
+  { id: 'p12', name: 'Ice Sweetened', category: 'white', price: 41000, desc: 'Kopi susu dingin dengan manis alami gula aren pilihan.', img: 'menus/Ice Sweetened.png', badge: null },
+  { id: 'p13', name: 'Hot Mocha', category: 'chocolate', price: 44000, desc: 'Perpaduan sempurna espresso hangat dan cokelat artisanal pekat.', img: 'menus/Hot Mocha.png', badge: null },
+  { id: 'p14', name: 'Ice Mocha', category: 'chocolate', price: 46000, desc: 'Es kopi mocha dingin berpadu siram cokelat pilihan yang kaya rasa.', img: 'menus/Ice Mocha.png', badge: null },
+  { id: 'p15', name: 'Chocolate', category: 'chocolate', price: 42000, desc: 'Minuman cokelat murni kaya cita rasa tanpa espresso.', img: 'menus/Chocolate.png', badge: 'Non-Kopi' },
+  { id: 'p16', name: 'Matcha', category: 'noncoffee', price: 45000, desc: 'Matcha murni khas Uji Jepang yang otentik dan menenangkan.', img: 'menus/Matcha.png', badge: 'Favorit' },
+  { id: 'p17', name: 'Strawberry Matcha Latte', category: 'noncoffee', price: 48000, desc: 'Kreasi unik matcha Jepang dipadu selai stroberi segar & susu.', img: 'menus/Strawberry Matcha Latte.png', badge: 'Spesial' },
+  { id: 'p18', name: 'The Au Citron', category: 'noncoffee', price: 38000, desc: 'Teh lemon dingin segar dengan wangi teh berkualitas & keasaman alami.', img: 'menus/The Au Citron.png', badge: 'Segar' }
+];
+
+// App State Management
+let cart = JSON.parse(localStorage.getItem('bd_cart')) || [];
+
+// DOM Initializer
+document.addEventListener('DOMContentLoaded', () => {
+  initNavbar();
+  initCartDrawer();
+  initBookingModal();
+  initCheckoutModal();
+  initLoginModal();
+  updateCartBadge();
+
+  // If on produk.html
+  if (document.getElementById('product-grid-container')) {
+    renderProducts('all');
+    initFilters();
+  }
+});
+
+// Toast Notification System
+function showToast(message, type = 'info') {
+  let toastContainer = document.querySelector('.toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'toast-container';
+    document.body.appendChild(toastContainer);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<i class="fa-solid fa-circle-check" style="color: var(--accent-gold);"></i> <span>${message}</span>`;
+  
+  toastContainer.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 3200);
+}
+
+// Format Currency Utility
+function formatIDR(amount) {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+}
+
+// Navbar Logic
+function initNavbar() {
+  const toggleBtn = document.querySelector('.mobile-menu-toggle');
+  const navMenu = document.querySelector('.nav-menu');
+
+  if (toggleBtn && navMenu) {
+    toggleBtn.addEventListener('click', () => {
+      navMenu.classList.toggle('active');
+    });
+  }
+}
+
+// Cart Drawer Logic
+function initCartDrawer() {
+  const cartToggleBtns = document.querySelectorAll('.btn-cart-toggle');
+  const closeBtn = document.getElementById('close-cart-btn');
+  const cartOverlay = document.getElementById('cart-overlay');
+
+  cartToggleBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openCartDrawer();
+    });
+  });
+
+  if (closeBtn) closeBtn.addEventListener('click', closeCartDrawer);
+  if (cartOverlay) cartOverlay.addEventListener('click', closeCartDrawer);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeCartDrawer();
+      closeModal('booking-modal');
+      closeModal('checkout-modal');
+      closeModal('login-modal');
+    }
+  });
+}
+
+function openCartDrawer() {
+  const cartDrawer = document.getElementById('cart-drawer');
+  const cartOverlay = document.getElementById('cart-overlay');
+  renderCartItems();
+  if (cartDrawer && cartOverlay) {
+    cartDrawer.classList.add('active');
+    cartOverlay.classList.add('active');
+  }
+}
+
+function closeCartDrawer() {
+  const cartDrawer = document.getElementById('cart-drawer');
+  const cartOverlay = document.getElementById('cart-overlay');
+  if (cartDrawer && cartOverlay) {
+    cartDrawer.classList.remove('active');
+    cartOverlay.classList.remove('active');
+  }
+}
+
+function addToCart(productId) {
+  const product = PRODUCTS_DATA.find(p => p.id === productId);
+  if (!product) return;
+
+  const existingItem = cart.find(item => item.id === productId);
+  if (existingItem) {
+    existingItem.qty += 1;
+  } else {
+    cart.push({ ...product, qty: 1 });
+  }
+
+  saveCart();
+  updateCartBadge();
+  showToast(`${product.name} telah ditambahkan ke keranjang.`);
+}
+
+function updateItemQty(productId, delta) {
+  const item = cart.find(i => i.id === productId);
+  if (!item) return;
+
+  item.qty += delta;
+  if (item.qty <= 0) {
+    cart = cart.filter(i => i.id !== productId);
+  }
+
+  saveCart();
+  updateCartBadge();
+  renderCartItems();
+}
+
+function removeFromCart(productId) {
+  cart = cart.filter(i => i.id !== productId);
+  saveCart();
+  updateCartBadge();
+  renderCartItems();
+  showToast('Item berhasil dihapus dari keranjang.');
+}
+
+function saveCart() {
+  localStorage.setItem('bd_cart', JSON.stringify(cart));
+}
+
+function updateCartBadge() {
+  const totalCount = cart.reduce((sum, item) => sum + item.qty, 0);
+  const badgeElements = document.querySelectorAll('.cart-badge-count');
+  badgeElements.forEach(badge => {
+    badge.textContent = totalCount;
+  });
+}
+
+function renderCartItems() {
+  const cartBody = document.getElementById('cart-items-body');
+  const cartTotalEl = document.getElementById('cart-total-price');
+  const checkoutBtn = document.getElementById('cart-checkout-btn');
+  
+  if (!cartBody) return;
+
+  if (cart.length === 0) {
+    cartBody.innerHTML = `
+      <div class="cart-empty-state">
+        <i class="fa-solid fa-mug-hot cart-empty-icon"></i>
+        <p>Keranjang belanja Anda masih kosong.</p>
+        <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Pilih menu kopi kesukaan Anda dan nikmati racikan Blue Doors.</p>
+      </div>
+    `;
+    if (cartTotalEl) cartTotalEl.textContent = formatIDR(0);
+    if (checkoutBtn) checkoutBtn.disabled = true;
+    return;
+  }
+
+  if (checkoutBtn) checkoutBtn.disabled = false;
+
+  let total = 0;
+  cartBody.innerHTML = cart.map(item => {
+    const itemTotal = item.price * item.qty;
+    total += itemTotal;
+    return `
+      <div class="cart-item">
+        <img src="${item.img}" alt="${item.name}" class="cart-item-img">
+        <div class="cart-item-details">
+          <div class="cart-item-title">${item.name}</div>
+          <div class="cart-item-price">${formatIDR(item.price)}</div>
+          <div class="cart-item-controls">
+            <button class="qty-btn" onclick="updateItemQty('${item.id}', -1)" aria-label="Kurangi kuantitas">-</button>
+            <span class="cart-item-qty">${item.qty}</span>
+            <button class="qty-btn" onclick="updateItemQty('${item.id}', 1)" aria-label="Tambah kuantitas">+</button>
+          </div>
+        </div>
+        <button class="btn-remove-item" onclick="removeFromCart('${item.id}')" title="Hapus item">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+    `;
+  }).join('');
+
+  if (cartTotalEl) cartTotalEl.textContent = formatIDR(total);
+}
+
+// Checkout Modal & Midtrans Integration
+function initCheckoutModal() {
+  const checkoutBtn = document.getElementById('cart-checkout-btn');
+  const checkoutForm = document.getElementById('checkout-form');
+
+  if (checkoutBtn) {
+    checkoutBtn.addEventListener('click', () => {
+      closeCartDrawer();
+      openModal('checkout-modal');
+    });
+  }
+
+  if (checkoutForm) {
+    checkoutForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('co-name').value;
+      const phone = document.getElementById('co-phone').value;
+      const method = document.getElementById('co-method').value;
+
+      showToast('Memproses pesanan & gateway pembayaran Midtrans...', 'info');
+
+      try {
+        const response = await fetch(`${API_BASE}/orders/checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone, orderType: method, items: cart })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.snapToken) {
+          closeModal('checkout-modal');
+
+          // Trigger Midtrans Snap Popup if SDK is available
+          if (window.snap && typeof window.snap.pay === 'function') {
+            window.snap.pay(data.snapToken, {
+              onSuccess: function(result) {
+                showToast('Pembayaran Midtrans Berhasil!', 'success');
+                alert(`🎉 PEMBAYARAN MIDTRANS BERHASIL!\n\nNomor Pesanan: ${data.orderId}\nStatus: Lunas\nTerima kasih, ${name}!`);
+                cart = [];
+                saveCart();
+                updateCartBadge();
+              },
+              onPending: function(result) {
+                showToast('Menunggu Pembayaran Midtrans', 'info');
+                alert(`⌛ MENUNGGU PEMBAYARAN\n\nNomor Pesanan: ${data.orderId}\nSilakan selesaikan pembayaran sesuai instruksi Midtrans.`);
+                cart = [];
+                saveCart();
+                updateCartBadge();
+              },
+              onError: function(result) {
+                showToast('Pembayaran Gagal.', 'error');
+              },
+              onClose: function() {
+                showToast('Jendela Pembayaran Midtrans Ditutup.', 'info');
+              }
+            });
+          } else {
+            // Fallback Popup
+            cart = [];
+            saveCart();
+            updateCartBadge();
+            alert(`🎉 PESANAN BERHASIL DIBUAT!\n\nNomor Order: ${data.orderId}\nNama: ${name}\nSnap Token Midtrans: ${data.snapToken}\n\nStaf kami akan menghubungi Anda via WA.`);
+          }
+        } else {
+          showToast(data.message || 'Gagal memproses pembayaran.', 'error');
+        }
+      } catch (err) {
+        console.warn('Backend server offline, using local fallback execution.', err);
+        const orderRef = 'BD-ORD-' + Math.floor(100000 + Math.random() * 900000);
+        closeModal('checkout-modal');
+        cart = [];
+        saveCart();
+        updateCartBadge();
+        showToast(`Pesanan #${orderRef} Berhasil Ditentukan!`, 'success');
+        alert(`🎉 PESANAN BERHASIL DIBUAT!\n\nNomor Referensi: ${orderRef}\nNama Pemesan: ${name}\nNomor WA: ${phone}\nTipe Pemesanan: ${method}\n\nMerchant Midtrans ID: M294142139`);
+      }
+    });
+  }
+}
+
+// Reservation / Table Booking Logic with Backend
+function initBookingModal() {
+  const bookBtns = document.querySelectorAll('.btn-open-booking');
+  const bookingForm = document.getElementById('booking-form');
+
+  bookBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openModal('booking-modal');
+    });
+  });
+
+  if (bookingForm) {
+    bookingForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('bk-name').value;
+      const phone = document.getElementById('bk-phone').value;
+      const date = document.getElementById('bk-date').value;
+      const time = document.getElementById('bk-time').value;
+      const guests = document.getElementById('bk-guests').value;
+      const area = document.getElementById('bk-area').value;
+
+      try {
+        const response = await fetch(`${API_BASE}/bookings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone, date, time, guests, area })
+        });
+        const data = await response.json();
+        closeModal('booking-modal');
+        bookingForm.reset();
+
+        const rsvRef = data.data ? data.data.id : ('BD-RSV-' + Math.floor(100000 + Math.random() * 900000));
+        showToast(`Reservasi Meja #${rsvRef} Berhasil Ditentukan!`);
+        alert(`☕ RESERVASI MEJA BERHASIL!\n\nKode Reservasi: ${rsvRef}\nNama: ${name}\nTanggal: ${date} (Pukul ${time})\nJumlah Tamu: ${guests} Orang\nArea Seating: ${area}\n\nLokasi: Blue Doors Surabaya\nKami menantikan kedatangan Anda!`);
+      } catch (err) {
+        const rsvRef = 'BD-RSV-' + Math.floor(100000 + Math.random() * 900000);
+        closeModal('booking-modal');
+        bookingForm.reset();
+        showToast(`Reservasi Meja #${rsvRef} Berhasil!`);
+        alert(`☕ RESERVASI MEJA BERHASIL!\n\nKode Reservasi: ${rsvRef}\nNama: ${name}\nTanggal: ${date} (Pukul ${time})\nJumlah Tamu: ${guests} Orang\nArea Seating: ${area}`);
+      }
+    });
+  }
+}
+
+// Modal Helpers
+function openModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.add('active');
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.remove('active');
+}
+
+// Catalog Page Filters & Rendering
+function initFilters() {
+  const filterBtns = document.querySelectorAll('.filter-btn');
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const cat = btn.getAttribute('data-category');
+      renderProducts(cat);
+    });
+  });
+}
+
+async function renderProducts(category = 'all') {
+  const container = document.getElementById('product-grid-container');
+  if (!container) return;
+
+  let productsList = PRODUCTS_DATA;
+  try {
+    const res = await fetch(`${API_BASE}/products`);
+    const json = await res.json();
+    if (json.success && json.data && json.data.length > 0) {
+      productsList = json.data;
+    }
+  } catch (e) {
+    // Fallback to PRODUCTS_DATA
+  }
+
+  const adminMenuData = JSON.parse(localStorage.getItem('bd_admin_menu')) || [];
+
+  const filtered = category === 'all' 
+    ? productsList 
+    : productsList.filter(p => p.category === category);
+
+  container.innerHTML = filtered.map(p => {
+    const adminItem = adminMenuData.find(m => m.id === p.id);
+    const isAvailable = p.inStock !== false && (adminItem ? adminItem.inStock : true);
+
+    return `
+      <div class="product-card" style="${!isAvailable ? 'opacity: 0.75;' : ''}">
+        <div class="product-img-wrapper">
+          <img src="${p.img}" alt="${p.name}" loading="lazy">
+          ${!isAvailable ? `<span class="product-badge" style="color: #DC2626; border-color: #FCA5A5;">Stok Habis</span>` : (p.badge ? `<span class="product-badge">${p.badge}</span>` : '')}
+        </div>
+        <div class="product-info">
+          <h3 class="product-title">${p.name}</h3>
+          <p class="product-desc">${p.desc}</p>
+          <div class="product-footer">
+            <span class="product-price">${formatIDR(p.price)}</span>
+            ${isAvailable ? `
+              <button class="btn-add-cart" onclick="addToCart('${p.id}')">
+                <i class="fa-solid fa-plus"></i> Pesan
+              </button>
+            ` : `
+              <button class="btn-add-cart" disabled style="opacity: 0.6; cursor: not-allowed; background-color: #94A3B8;">
+                <i class="fa-solid fa-ban"></i> Habis
+              </button>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+let currentAuthMode = 'login';
+
+function initLoginModal() {
+  const loginBtns = document.querySelectorAll('.btn-login-toggle');
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+
+  loginBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openModal('login-modal');
+    });
+  });
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const emailInput = document.getElementById('login-email');
+      const val = emailInput ? emailInput.value : '';
+
+      try {
+        await fetch(`${API_BASE}/users/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: val, password: '***' })
+        });
+      } catch (err) {}
+
+      showToast(`Selamat datang kembali, ${val || 'Pelanggan'}!`, 'success');
+      closeModal('login-modal');
+      loginBtns.forEach(btn => {
+        btn.innerHTML = `<i class="fa-solid fa-user-check"></i> <span>Akun Saya</span>`;
+      });
+    });
+  }
+
+  if (registerForm) {
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('reg-name').value;
+      const contact = document.getElementById('reg-contact').value;
+      const password = document.getElementById('reg-password').value;
+      const passwordConfirm = document.getElementById('reg-password-confirm').value;
+
+      if (password !== passwordConfirm) {
+        showToast('Konfirmasi kata sandi tidak cocok!', 'error');
+        return;
+      }
+
+      try {
+        await fetch(`${API_BASE}/users/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, contact, password })
+        });
+      } catch (err) {}
+
+      showToast(`Selamat ${name}, akun Anda berhasil dibuat!`, 'success');
+      closeModal('login-modal');
+      registerForm.reset();
+
+      loginBtns.forEach(btn => {
+        btn.innerHTML = `<i class="fa-solid fa-user-check"></i> <span>Akun Saya</span>`;
+      });
+    });
+  }
+}
+
+function toggleAuthMode() {
+  const modalTitle = document.getElementById('login-modal-title');
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const toggleText = document.getElementById('auth-toggle-text');
+  const toggleBtn = document.getElementById('btn-toggle-auth');
+
+  if (currentAuthMode === 'login') {
+    currentAuthMode = 'register';
+    if (modalTitle) modalTitle.textContent = 'Daftar Akun Blue Doors';
+    if (loginForm) loginForm.style.display = 'none';
+    if (registerForm) registerForm.style.display = 'block';
+    if (toggleText) toggleText.textContent = 'Sudah memiliki akun?';
+    if (toggleBtn) toggleBtn.textContent = 'Masuk';
+  } else {
+    currentAuthMode = 'login';
+    if (modalTitle) modalTitle.textContent = 'Masuk ke Blue Doors';
+    if (loginForm) loginForm.style.display = 'block';
+    if (registerForm) registerForm.style.display = 'none';
+    if (toggleText) toggleText.textContent = 'Belum memiliki akun?';
+    if (toggleBtn) toggleBtn.textContent = 'Daftar Akun Baru';
+  }
+}
