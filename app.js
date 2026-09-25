@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCheckoutModal();
   initLoginModal();
   updateCartBadge();
+  renderPublicReservations();
 
   // If on produk.html
   if (document.getElementById('product-grid-container')) {
@@ -543,3 +544,93 @@ function toggleAuthMode() {
     if (toggleBtn) toggleBtn.textContent = 'Daftar Akun Baru';
   }
 }
+
+// Live Public Reservation Schedule & History
+let allPublicBookings = [];
+
+async function renderPublicReservations() {
+  const container = document.getElementById('public-reservation-grid');
+  if (!container) return;
+
+  const defaultBookings = [
+    { id: 'BD-RSV-849201', name: 'Ahmad Rizky', phone: '081234567891', date: '2026-09-24', time: '14:30', guests: '3-4', area: 'Indoor AC', status: 'Dikonfirmasi' },
+    { id: 'BD-RSV-719302', name: 'Siti Sarah', phone: '081987654321', date: '2026-09-24', time: '16:00', guests: '5-8', area: 'Outdoor Garden', status: 'Pending' },
+    { id: 'BD-RSV-391048', name: 'Budi Pratama', phone: '081345678902', date: '2026-09-24', time: '19:00', guests: '1-2', area: 'Espresso Bar', status: 'Dikonfirmasi' },
+    { id: 'BD-RSV-102948', name: 'Dewi Lestari', phone: '081567890123', date: '2026-09-25', time: '10:00', guests: '3-4', area: 'Indoor AC', status: 'Pending' }
+  ];
+
+  let bookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || defaultBookings;
+
+  try {
+    const res = await fetch(`${API_BASE}/bookings`);
+    const json = await res.json();
+    if (json.success && json.data && json.data.length > 0) {
+      bookings = json.data;
+    }
+  } catch(e) {}
+
+  allPublicBookings = bookings;
+  displayPublicReservations(allPublicBookings);
+}
+
+function displayPublicReservations(list) {
+  const container = document.getElementById('public-reservation-grid');
+  if (!container) return;
+
+  if (!list || list.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 2rem 1rem;">
+        <i class="fa-solid fa-calendar-xmark" style="font-size: 2rem; margin-bottom: 0.5rem; color: var(--primary-brand);"></i>
+        <p>Tidak ada data reservasi meja yang ditemukan.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = list.map(b => {
+    const isConfirmed = b.status === 'Dikonfirmasi' || b.status === 'Selesai';
+    const nameParts = b.name ? b.name.split(' ') : ['Tamu'];
+    const initialName = nameParts[0] + (nameParts[1] ? ' ' + nameParts[1][0] + '.' : '');
+
+    return `
+      <div class="reservation-card-item">
+        <div>
+          <div class="rsv-card-header">
+            <span class="rsv-code">${b.id}</span>
+            <span class="rsv-badge ${isConfirmed ? 'confirmed' : 'pending'}">
+              <i class="fa-solid ${isConfirmed ? 'fa-circle-check' : 'fa-clock'}"></i>
+              ${b.status || 'Pending'}
+            </span>
+          </div>
+          <div class="rsv-guest-name">${initialName}</div>
+          <div class="rsv-details">
+            <div><i class="fa-solid fa-calendar-day"></i> ${b.date || '-'} (Jam ${b.time || '-'})</div>
+            <div><i class="fa-solid fa-users"></i> ${b.guests || '1-2'} Orang</div>
+            <div><i class="fa-solid fa-chair"></i> Area: ${b.area || 'Indoor AC'}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterPublicReservations() {
+  const input = document.getElementById('rsv-search-input');
+  if (!input) return;
+  const q = input.value.toLowerCase().trim();
+
+  if (!q) {
+    displayPublicReservations(allPublicBookings);
+    return;
+  }
+
+  const filtered = allPublicBookings.filter(b => 
+    (b.id && b.id.toLowerCase().includes(q)) ||
+    (b.name && b.name.toLowerCase().includes(q)) ||
+    (b.phone && b.phone.toLowerCase().includes(q)) ||
+    (b.area && b.area.toLowerCase().includes(q))
+  );
+
+  displayPublicReservations(filtered);
+}
+

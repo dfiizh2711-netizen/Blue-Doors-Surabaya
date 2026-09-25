@@ -92,6 +92,35 @@
 
       </div>
     </section>
+
+    <!-- Reservation Banner & Live Schedule -->
+    <section class="section" id="booking" style="background-color: var(--surface-dark);">
+      <div class="container">
+        <div class="booking-banner">
+          <h2>Rencanakan Kunjungan & Reservasi Meja Anda</h2>
+          <p>Dapatkan kepastian tempat untuk pertemuan bisnis, kerja kelompok, atau sekadar waktu santai di Blue Doors Surabaya.</p>
+          <button class="btn btn-primary btn-open-booking">
+            <i class="fa-solid fa-calendar-days"></i> Buat Reservasi Sekarang
+          </button>
+        </div>
+
+        <!-- Live Table Reservation Schedule & History -->
+        <div class="reservation-history-section">
+          <div class="reservation-history-header">
+            <div class="reservation-history-title">
+              <i class="fa-solid fa-chair" style="color: var(--primary-brand);"></i>
+              <span>Jadwal & Status Reservasi Meja Terisi (Live)</span>
+            </div>
+            <div class="reservation-search-box">
+              <input type="text" id="rsv-search-input" placeholder="Cari Kode Reservasi / Nama / WA..." onkeyup="filterPublicReservations()">
+            </div>
+          </div>
+          <div class="reservation-grid" id="public-reservation-grid">
+            <!-- Dynamic Reservation Cards -->
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- Slide-Over Shopping Cart Drawer -->
