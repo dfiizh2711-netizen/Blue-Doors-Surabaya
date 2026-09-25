@@ -1,10 +1,13 @@
 -- ========================================================
--- BLUE DOORS SURABAYA — SUPABASE DATABASE SCHEMA MIGRATION
--- Copy and run this script in Supabase SQL Editor
+-- BLUE DOORS SURABAYA — DEDICATED SCHEMA 'bluedoors'
+-- Run this script in your existing Supabase SQL Editor
 -- ========================================================
 
--- 1. Create Products / Menu Catalog Table
-CREATE TABLE IF NOT EXISTS public.products (
+-- 1. Create dedicated schema 'bluedoors' to prevent any conflict with existing tables
+CREATE SCHEMA IF NOT EXISTS bluedoors;
+
+-- 2. Create Products / Menu Catalog Table
+CREATE TABLE IF NOT EXISTS bluedoors.products (
   id VARCHAR(50) PRIMARY KEY,
   name VARCHAR(150) NOT NULL,
   category VARCHAR(50) NOT NULL,
@@ -16,8 +19,8 @@ CREATE TABLE IF NOT EXISTS public.products (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 2. Create Table Reservations / Bookings Table
-CREATE TABLE IF NOT EXISTS public.bookings (
+-- 3. Create Table Reservations / Bookings Table
+CREATE TABLE IF NOT EXISTS bluedoors.bookings (
   id VARCHAR(50) PRIMARY KEY,
   name VARCHAR(150) NOT NULL,
   phone VARCHAR(50) NOT NULL,
@@ -29,8 +32,8 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 3. Create Orders Table for Midtrans Payments
-CREATE TABLE IF NOT EXISTS public.orders (
+-- 4. Create Orders Table for Midtrans Payments
+CREATE TABLE IF NOT EXISTS bluedoors.orders (
   id VARCHAR(100) PRIMARY KEY,
   customer_name VARCHAR(150) NOT NULL,
   customer_phone VARCHAR(50) NOT NULL,
@@ -43,8 +46,8 @@ CREATE TABLE IF NOT EXISTS public.orders (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 4. Create Users / Customer Directory Table
-CREATE TABLE IF NOT EXISTS public.users (
+-- 5. Create Users / Customer Directory Table
+CREATE TABLE IF NOT EXISTS bluedoors.users (
   id VARCHAR(50) PRIMARY KEY,
   name VARCHAR(150) NOT NULL,
   phone VARCHAR(50) UNIQUE NOT NULL,
@@ -54,8 +57,8 @@ CREATE TABLE IF NOT EXISTS public.users (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- Seed Initial Products Data into Supabase
-INSERT INTO public.products (id, name, category, price, desc, img, badge, in_stock) VALUES
+-- Seed Initial Products Data into bluedoors.products
+INSERT INTO bluedoors.products (id, name, category, price, desc, img, badge, in_stock) VALUES
 ('p1', 'Kyoto Latte', 'specialty', 42000, 'Latte dingin khas Jepang dengan manis yang pas dan tekstur ekstra halus.', 'menus/Kyoto Latte.png', 'Terfavorit', true),
 ('p2', 'Fleur Noire', 'specialty', 45000, 'Racikan specialty espresso dengan sentuhan floral & keharuman alami.', 'menus/Fleur Noire.png', 'Signature', true),
 ('p3', 'White Velvet Latte', 'specialty', 44000, 'Latte lembut berminyak dengan rasa vanilla bourbon alami & susu steaming sempurna.', 'menus/White Velvet Latte.png', 'Best Seller', true),
