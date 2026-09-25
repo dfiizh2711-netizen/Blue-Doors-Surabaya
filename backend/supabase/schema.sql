@@ -3,7 +3,7 @@
 -- Run this script in your existing Supabase SQL Editor
 -- ========================================================
 
--- 1. Create dedicated schema 'bluedoors' to prevent any conflict with existing tables
+-- 1. Create dedicated schema 'bluedoors'
 CREATE SCHEMA IF NOT EXISTS bluedoors;
 
 -- 2. Create Products / Menu Catalog Table
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS bluedoors.products (
   name VARCHAR(150) NOT NULL,
   category VARCHAR(50) NOT NULL,
   price NUMERIC(12,2) NOT NULL DEFAULT 0,
-  desc TEXT,
+  "desc" TEXT,
   img VARCHAR(255),
   badge VARCHAR(50),
   in_stock BOOLEAN DEFAULT true,
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS bluedoors.users (
 );
 
 -- Seed Initial Products Data into bluedoors.products
-INSERT INTO bluedoors.products (id, name, category, price, desc, img, badge, in_stock) VALUES
+INSERT INTO bluedoors.products (id, name, category, price, "desc", img, badge, in_stock) VALUES
 ('p1', 'Kyoto Latte', 'specialty', 42000, 'Latte dingin khas Jepang dengan manis yang pas dan tekstur ekstra halus.', 'menus/Kyoto Latte.png', 'Terfavorit', true),
 ('p2', 'Fleur Noire', 'specialty', 45000, 'Racikan specialty espresso dengan sentuhan floral & keharuman alami.', 'menus/Fleur Noire.png', 'Signature', true),
 ('p3', 'White Velvet Latte', 'specialty', 44000, 'Latte lembut berminyak dengan rasa vanilla bourbon alami & susu steaming sempurna.', 'menus/White Velvet Latte.png', 'Best Seller', true),
