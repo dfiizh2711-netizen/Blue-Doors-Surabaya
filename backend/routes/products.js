@@ -7,8 +7,12 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     if (supabase) {
-      const { data, error } = await supabase.from('products').select('*');
-      if (!error && data) return res.json({ success: true, data });
+      let { data, error } = await supabase.from('bluedoors_products').select('*');
+      if (error || !data || data.length === 0) {
+        const fallbackRes = await supabase.from('products').select('*');
+        if (!fallbackRes.error && fallbackRes.data) data = fallbackRes.data;
+      }
+      if (data && data.length > 0) return res.json({ success: true, data });
     }
     res.json({ success: true, data: DB_STORE.products });
   } catch (err) {
@@ -28,11 +32,11 @@ router.post('/', async (req, res) => {
       desc: desc || '',
       img: img || 'menus/Kyoto Latte.png',
       badge: badge || null,
-      inStock: inStock !== false
+      in_stock: inStock !== false
     };
 
     if (supabase) {
-      const { data, error } = await supabase.from('products').insert([newProduct]).select();
+      const { data, error } = await supabase.from('bluedoors_products').insert([newProduct]).select();
       if (!error && data) {
         DB_STORE.products.push(data[0]);
         return res.status(201).json({ success: true, data: data[0] });
@@ -58,7 +62,7 @@ router.put('/:id', async (req, res) => {
     }
 
     if (supabase) {
-      await supabase.from('products').update(updates).eq('id', id);
+      await supabase.from('bluedoors_products').update(updates).eq('id', id);
     }
 
     res.json({ success: true, data: DB_STORE.products[index] || updates });
@@ -74,7 +78,7 @@ router.delete('/:id', async (req, res) => {
     DB_STORE.products = DB_STORE.products.filter(p => p.id !== id);
 
     if (supabase) {
-      await supabase.from('products').delete().eq('id', id);
+      await supabase.from('bluedoors_products').delete().eq('id', id);
     }
 
     res.json({ success: true, message: 'Produk berhasil dihapus.' });

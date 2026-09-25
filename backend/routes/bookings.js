@@ -7,8 +7,12 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     if (supabase) {
-      const { data, error } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
-      if (!error && data) return res.json({ success: true, data });
+      let { data, error } = await supabase.from('bluedoors_bookings').select('*').order('created_at', { ascending: false });
+      if (error || !data || data.length === 0) {
+        const fallback = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
+        if (!fallback.error && fallback.data) data = fallback.data;
+      }
+      if (data && data.length > 0) return res.json({ success: true, data });
     }
     res.json({ success: true, data: DB_STORE.bookings });
   } catch (err) {
@@ -34,11 +38,11 @@ router.post('/', async (req, res) => {
       guests: guests || '1-2',
       area: area || 'Indoor AC',
       status: 'Pending',
-      createdAt: new Date().toISOString()
+      created_at: new Date().toISOString()
     };
 
     if (supabase) {
-      const { data, error } = await supabase.from('bookings').insert([newBooking]).select();
+      const { data, error } = await supabase.from('bluedoors_bookings').insert([newBooking]).select();
       if (!error && data) {
         DB_STORE.bookings.unshift(data[0]);
         return res.status(201).json({ success: true, data: data[0] });
@@ -64,7 +68,7 @@ router.put('/:id', async (req, res) => {
     }
 
     if (supabase) {
-      await supabase.from('bookings').update({ status }).eq('id', id);
+      await supabase.from('bluedoors_bookings').update({ status }).eq('id', id);
     }
 
     res.json({ success: true, message: 'Status reservasi berhasil diperbarui.', data: item });
@@ -80,7 +84,7 @@ router.delete('/:id', async (req, res) => {
     DB_STORE.bookings = DB_STORE.bookings.filter(b => b.id !== id);
 
     if (supabase) {
-      await supabase.from('bookings').delete().eq('id', id);
+      await supabase.from('bluedoors_bookings').delete().eq('id', id);
     }
 
     res.json({ success: true, message: 'Reservasi dihapus.' });
