@@ -160,7 +160,19 @@ function closeMobileSidebar() {
 }
 
 // Render Core Admin Data
-function renderAllAdminData() {
+async function renderAllAdminData() {
+  adminMenu = JSON.parse(localStorage.getItem('bd_admin_menu')) || INITIAL_MENU_ITEMS;
+  adminBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || INITIAL_BOOKINGS;
+  adminUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || INITIAL_USERS;
+
+  try {
+    const res = await fetch('http://localhost:5000/api/users');
+    const json = await res.json();
+    if (json.success && json.data && json.data.length > 0) {
+      adminUsers = json.data;
+    }
+  } catch(e) {}
+
   renderKPIs();
   renderOverviewBookings();
   renderMenuTable();

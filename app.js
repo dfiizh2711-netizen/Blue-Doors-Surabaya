@@ -479,6 +479,28 @@ function initLoginModal() {
         return;
       }
 
+      // Save user to localStorage so Admin Dashboard immediately reflects new user
+      const currentUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || [
+        { id: 'USR-001', name: 'Ahmad Rizky', phone: '6281234567891', favoriteArea: 'Indoor AC', totalVisits: 8, status: 'Aktif' },
+        { id: 'USR-002', name: 'Siti Sarah', phone: '6281987654321', favoriteArea: 'Outdoor Garden', totalVisits: 5, status: 'Aktif' },
+        { id: 'USR-003', name: 'Budi Pratama', phone: '6281345678902', favoriteArea: 'Espresso Bar', totalVisits: 12, status: 'VIP' },
+        { id: 'USR-004', name: 'Dewi Lestari', phone: '6281567890123', favoriteArea: 'Indoor AC', totalVisits: 3, status: 'Aktif' },
+        { id: 'USR-005', name: 'Hendra Gunawan', phone: '6281789012345', favoriteArea: 'Outdoor Garden', totalVisits: 15, status: 'VIP' }
+      ];
+
+      const cleanPhone = contact.replace(/[^0-9]/g, '') || contact;
+      const newUser = {
+        id: 'USR-00' + (currentUsers.length + 1),
+        name: name,
+        phone: cleanPhone,
+        favoriteArea: 'Indoor AC',
+        totalVisits: 1,
+        status: 'Aktif'
+      };
+
+      currentUsers.push(newUser);
+      localStorage.setItem('bd_admin_users', JSON.stringify(currentUsers));
+
       try {
         await fetch(`${API_BASE}/users/register`, {
           method: 'POST',
