@@ -376,11 +376,6 @@ function updateBookingStatus(id, newStatus) {
   if (b) {
     b.status = newStatus;
     localStorage.setItem('bd_admin_bookings', JSON.stringify(adminBookings));
-
-    if (window.BlueDoorsDB && (newStatus === 'Dikonfirmasi' || newStatus === 'Selesai')) {
-      window.BlueDoorsDB.notifyBookingCompleted(id, b);
-    }
-
     renderAllAdminData();
   }
 }
@@ -484,16 +479,28 @@ function renderOrderTable() {
 function toggleOrderStatus(id) {
   const order = adminOrders.find(o => o.id === id);
   if (order) {
-    const isNowPaid = !(order.payment_status === 'paid' || order.payment_status === 'Lunas');
-    order.payment_status = isNowPaid ? 'paid' : 'pending';
+    order.payment_status = (order.payment_status === 'paid' || order.payment_status === 'Lunas') ? 'pending' : 'paid';
     localStorage.setItem('bd_admin_orders', JSON.stringify(adminOrders));
 
     if (window.BlueDoorsDB) {
       window.BlueDoorsDB.updateOrderStatus(id, order.payment_status);
-      if (isNowPaid) {
-        window.BlueDoorsDB.notifyOrderCompleted(id, order);
-      }
     }
+
+    // Broadcast live event across all open user browser tabs instantly (0ms)
+    try {
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('bluedoors_orders_channel');
+        bc.postMessage({
+          type: 'ORDER_STATUS_CHANGED',
+          orderId: id,
+          customerName: order.customer_name || 'Pelanggan',
+          status: order.payment_status,
+          totalAmount: order.total_amount,
+          timestamp: Date.now()
+        });
+        bc.close();
+      }
+    } catch(e) {}
 
     // Also update backend if available
     try {

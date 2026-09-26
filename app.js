@@ -703,3 +703,171 @@ function filterPublicReservations() {
   displayPublicReservations(filtered);
 }
 
+/* ========================================================
+   REAL-TIME ORDER COMPLETION LIVE NOTIFICATION SYSTEM
+   ======================================================== */
+
+// Web Audio API Synth Chime (no external mp3 file required)
+function playCompletionChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const now = ctx.currentTime;
+    
+    // Play a pleasant C-Major 3-note melodic chime (C5 -> G5 -> C6)
+    const notes = [523.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+
+      gain.gain.setValueAtTime(0, now + idx * 0.12);
+      gain.gain.linearRampToValueAtTime(0.25, now + idx * 0.12 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.6);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + idx * 0.12);
+      osc.stop(now + idx * 0.12 + 0.65);
+    });
+  } catch (e) {
+    console.log('Audio chime auto-play blocked or unsupported:', e);
+  }
+}
+
+// Render Live Notification Banner on User Screen
+function showLiveOrderNotification(data) {
+  const isCompleted = data.status === 'paid' || data.status === 'Lunas' || data.status === 'settlement';
+  if (!isCompleted) return;
+
+  // Remove any existing notification first
+  const existing = document.getElementById('live-order-notification-banner');
+  if (existing) existing.remove();
+
+  // Play audio chime immediately!
+  playCompletionChime();
+
+  const banner = document.createElement('div');
+  banner.id = 'live-order-notification-banner';
+  banner.className = 'live-order-notification';
+  banner.setAttribute('role', 'alert');
+  banner.setAttribute('aria-live', 'assertive');
+
+  banner.innerHTML = `
+    <div class="lon-content">
+      <div class="lon-icon-box">
+        <i class="fa-solid fa-bell-concierge"></i>
+      </div>
+      <div class="lon-text-body">
+        <div class="lon-header">
+          <span class="lon-title">PESANAN SELESAI & LUNAS!</span>
+          <span class="lon-badge">${data.orderId || 'BD-ORD'}</span>
+        </div>
+        <p class="lon-desc">
+          Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> telah diselesaikan oleh kasir/admin. Selamat menikmati!
+        </p>
+      </div>
+      <button type="button" class="lon-close-btn" onclick="dismissLiveNotification()" aria-label="Tutup Notifikasi">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(banner);
+
+  // Auto dismiss after 10 seconds
+  setTimeout(() => {
+    dismissLiveNotification();
+  }, 10000);
+}
+
+function dismissLiveNotification() {
+  const banner = document.getElementById('live-order-notification-banner');
+  if (banner) {
+    banner.classList.add('hide');
+    setTimeout(() => banner.remove(), 400);
+  }
+}
+
+// Live Listener Initialization (BroadcastChannel + Polling + Supabase Realtime)
+function initLiveOrderNotifier() {
+  // 1. BroadcastChannel for Instant Tab-to-Tab Broadcast (0ms latency)
+  if ('BroadcastChannel' in window) {
+    const bc = new BroadcastChannel('bluedoors_orders_channel');
+    bc.onmessage = (event) => {
+      if (event.data && event.data.type === 'ORDER_STATUS_CHANGED') {
+        showLiveOrderNotification(event.data);
+      }
+    };
+  }
+
+  // 2. LocalStorage Polling Fallback (Checks for status flips every 3 seconds)
+  let lastSeenOrders = {};
+  try {
+    const initialOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [];
+    initialOrders.forEach(o => { lastSeenOrders[o.id] = o.payment_status; });
+  } catch(e) {}
+
+  setInterval(() => {
+    try {
+      const currentOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [];
+      currentOrders.forEach(o => {
+        const prevStatus = lastSeenOrders[o.id];
+        const newStatus = o.payment_status;
+        if (prevStatus && prevStatus !== newStatus && (newStatus === 'paid' || newStatus === 'Lunas')) {
+          showLiveOrderNotification({
+            orderId: o.id,
+            customerName: o.customer_name || 'Pelanggan',
+            status: newStatus,
+            totalAmount: o.total_amount
+          });
+        }
+        lastSeenOrders[o.id] = newStatus;
+      });
+    } catch(e) {}
+  }, 3000);
+
+  // 3. Supabase Realtime Subscription (Cross-device websocket)
+  if (window.BlueDoorsDB && window.BlueDoorsDB.client) {
+    try {
+      window.BlueDoorsDB.client
+        .channel('public-orders-live')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'bluedoors', table: 'orders' }, payload => {
+          if (payload.new && (payload.new.payment_status === 'paid' || payload.new.payment_status === 'Lunas')) {
+            showLiveOrderNotification({
+              orderId: payload.new.id,
+              customerName: payload.new.customer_name || 'Pelanggan',
+              status: payload.new.payment_status,
+              totalAmount: payload.new.total_amount
+            });
+          }
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bluedoors_orders' }, payload => {
+          if (payload.new && (payload.new.payment_status === 'paid' || payload.new.payment_status === 'Lunas')) {
+            showLiveOrderNotification({
+              orderId: payload.new.id,
+              customerName: payload.new.customer_name || 'Pelanggan',
+              status: payload.new.payment_status,
+              totalAmount: payload.new.total_amount
+            });
+          }
+        })
+        .subscribe();
+    } catch(e) {
+      console.warn('Supabase Realtime subscription error:', e);
+    }
+  }
+}
+
+// Run live notifier listener when DOM loads
+document.addEventListener('DOMContentLoaded', () => {
+  initLiveOrderNotifier();
+});
+
+
