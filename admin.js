@@ -252,9 +252,29 @@ async function renderAllAdminData() {
       localStorage.setItem('bd_admin_users', JSON.stringify(adminUsers));
 
       const dbOrders = await window.BlueDoorsDB.fetchOrders();
+      const localOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || INITIAL_ORDERS;
+
+      let mergedOrdersMap = new Map();
+      localOrders.forEach(o => mergedOrdersMap.set(o.id, o));
+
       if (dbOrders && dbOrders.length > 0) {
-        adminOrders = dbOrders;
+        dbOrders.forEach(o => {
+          const existing = mergedOrdersMap.get(o.id);
+          mergedOrdersMap.set(o.id, {
+            id: o.id,
+            customer_name: o.customer_name || 'Pelanggan',
+            customer_phone: o.customer_phone || '',
+            order_type: o.order_type || 'Dine-in',
+            total_amount: o.total_amount || 0,
+            items: o.items || [],
+            payment_status: existing ? existing.payment_status : (o.payment_status || 'pending'),
+            created_at: o.created_at || new Date().toISOString()
+          });
+        });
       }
+
+      adminOrders = Array.from(mergedOrdersMap.values());
+      localStorage.setItem('bd_admin_orders', JSON.stringify(adminOrders));
 
       const dbBookings = await window.BlueDoorsDB.fetchBookings();
       const localBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || INITIAL_BOOKINGS;
@@ -666,12 +686,35 @@ function toggleOrderStatus(id) {
   }
 }
 
-function deleteOrder(id) {
-  if (confirm('Apakah Anda yakin ingin menghapus catatan pesanan ini?')) {
-    adminOrders = adminOrders.filter(o => o.id !== id);
-    localStorage.setItem('bd_admin_orders', JSON.stringify(adminOrders));
-    renderAllAdminData();
+async function deleteOrder(id) {
+  const orderObj = adminOrders.find(o => o.id === id);
+  const nameDisplay = orderObj ? (orderObj.customer_name || id) : id;
+
+  if (!confirm(`Apakah Anda yakin ingin menghapus catatan pesanan "${nameDisplay}" (${id})?\n\nData yang dihapus dari Supabase Cloud & website tidak dapat dikembalikan.`)) {
+    return;
   }
+
+  // 1. Remove from local memory & storage
+  adminOrders = adminOrders.filter(o => o.id !== id);
+  localStorage.setItem('bd_admin_orders', JSON.stringify(adminOrders));
+
+  // 2. Update UI immediately (0ms latency)
+  renderKPIs();
+  renderOrderTable();
+
+  // 3. Sync deletion to Supabase Cloud
+  if (window.BlueDoorsDB) {
+    try {
+      await window.BlueDoorsDB.deleteOrder(id);
+    } catch (err) {
+      console.warn('Supabase deleteOrder error:', err);
+    }
+  }
+
+  // 4. Sync deletion to Backend API (if active)
+  try {
+    await fetch(`http://localhost:5000/api/orders/${id}`, { method: 'DELETE' });
+  } catch (e) {}
 }
 
 function getStatusClass(status) {

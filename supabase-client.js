@@ -208,6 +208,28 @@ window.BlueDoorsDB = {
     }
   },
 
+  async deleteOrder(orderId) {
+    if (!supabaseClient) return false;
+    try {
+      let res = await supabaseClient.from('bluedoors_orders').delete().eq('id', orderId);
+      if (res.error) {
+        res = await supabaseClient.schema('bluedoors').from('orders').delete().eq('id', orderId);
+      }
+      if (res.error) {
+        res = await supabaseClient.from('orders').delete().eq('id', orderId);
+      }
+      if (res.error) {
+        console.error('❌ Supabase deleteOrder Error:', res.error.message || res.error);
+      } else {
+        console.log('✅ Supabase deleteOrder Success for ID:', orderId);
+      }
+      return !res.error;
+    } catch (err) {
+      console.error('Supabase deleteOrder error:', err);
+      return false;
+    }
+  },
+
   async fetchUsers() {
     if (!supabaseClient) return [];
     let res = await supabaseClient.schema('bluedoors').from('users').select('*').order('created_at', { ascending: false });

@@ -114,4 +114,21 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// DELETE order by ID
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (supabase) {
+      await supabase.from('bluedoors_orders').delete().eq('id', id);
+      await supabase.from('orders').delete().eq('id', id);
+    }
+    const idx = DB_STORE.orders.findIndex(o => o.id === id);
+    if (idx !== -1) DB_STORE.orders.splice(idx, 1);
+
+    res.json({ success: true, message: 'Pesanan berhasil dihapus.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 export default router;
