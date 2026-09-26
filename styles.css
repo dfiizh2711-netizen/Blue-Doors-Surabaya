@@ -159,7 +159,7 @@ a {
 }
 
 .brand-logo img {
-  height: 86px;
+  height: 130px;
   width: auto;
   object-fit: contain;
   transition: transform var(--transition-fast);
@@ -1320,13 +1320,13 @@ a {
 }
 
 .footer-brand .brand-logo img {
-  height: 68px;
-  width: 68px;
+  height: 105px;
+  width: 105px;
   object-fit: contain;
   background-color: #FFFFFF;
-  border-radius: 14px;
-  padding: 7px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  border-radius: 18px;
+  padding: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
 
 .footer-brand .brand-name {
@@ -1420,7 +1420,7 @@ a {
   }
 
   .brand-logo img {
-    height: 72px;
+    height: 108px;
   }
 
   .nav-menu {
@@ -1544,7 +1544,7 @@ a {
   }
 
   .brand-logo img {
-    height: 58px;
+    height: 88px;
     width: auto;
     flex-shrink: 0;
   }
