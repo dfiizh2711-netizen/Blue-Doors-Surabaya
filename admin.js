@@ -421,7 +421,7 @@ function renderUserTable() {
   if (adminUsers.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
           Belum ada data pelanggan / user yang terdaftar.
         </td>
       </tr>
@@ -434,7 +434,6 @@ function renderUserTable() {
       <td style="font-weight: 700; color: var(--text-muted);">${u.id}</td>
       <td style="font-weight: 700; color: var(--primary-navy);">${u.name}</td>
       <td>+${u.phone}</td>
-      <td>${u.favoriteArea}</td>
       <td><strong>${u.totalVisits}</strong> kali</td>
       <td><span class="status-badge ${u.status === 'VIP' ? 'status-confirmed' : 'status-available'}">${u.status}</span></td>
       <td class="col-action">
