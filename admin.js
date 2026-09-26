@@ -41,10 +41,39 @@ const INITIAL_USERS = [
   { id: 'USR-005', name: 'Hendra Gunawan', phone: '6281789012345', favoriteArea: 'Outdoor Garden', totalVisits: 15, status: 'VIP' }
 ];
 
+const INITIAL_ORDERS = [
+  {
+    id: 'BD-ORD-948120',
+    customer_name: 'Budi Santoso',
+    customer_phone: '6281234567890',
+    order_type: 'Dine-in / Minum di Tempat',
+    total_amount: 87000,
+    items: [
+      { id: 'p1', name: 'Kyoto Latte', price: 42000, qty: 1 },
+      { id: 'p2', name: 'Fleur Noire', price: 45000, qty: 1 }
+    ],
+    payment_status: 'paid',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'BD-ORD-381920',
+    customer_name: 'Siti Sarah',
+    customer_phone: '6281987654321',
+    order_type: 'Takeaway / Bawa Pulang',
+    total_amount: 48000,
+    items: [
+      { id: 'p17', name: 'Strawberry Matcha Latte', price: 48000, qty: 1 }
+    ],
+    payment_status: 'pending',
+    created_at: new Date().toISOString()
+  }
+];
+
 // App Local Storage State
 let adminMenu = JSON.parse(localStorage.getItem('bd_admin_menu')) || INITIAL_MENU_ITEMS;
 let adminBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || INITIAL_BOOKINGS;
 let adminUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || INITIAL_USERS;
+let adminOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || INITIAL_ORDERS;
 
 document.addEventListener('DOMContentLoaded', () => {
   checkAdminAuth();
@@ -125,7 +154,8 @@ function switchAdminTab(tabId) {
     'tab-overview': 'Dashboard Overview',
     'tab-menu': 'Manajemen Stok & Menu',
     'tab-booking': 'Manajemen Booking Meja',
-    'tab-users': 'Manajemen Pelanggan & User'
+    'tab-users': 'Manajemen Pelanggan & User',
+    'tab-orders': 'Manajemen Pesanan User & Midtrans'
   };
   const titleEl = document.getElementById('current-tab-title');
   if (titleEl) titleEl.textContent = titles[tabId] || 'Admin Portal';
@@ -164,12 +194,19 @@ async function renderAllAdminData() {
   adminMenu = JSON.parse(localStorage.getItem('bd_admin_menu')) || INITIAL_MENU_ITEMS;
   adminBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || INITIAL_BOOKINGS;
   adminUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || INITIAL_USERS;
+  adminOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || INITIAL_ORDERS;
 
   try {
-    const res = await fetch('http://localhost:5000/api/users');
-    const json = await res.json();
-    if (json.success && json.data && json.data.length > 0) {
-      adminUsers = json.data;
+    const resUsers = await fetch('http://localhost:5000/api/users');
+    const jsonUsers = await resUsers.json();
+    if (jsonUsers.success && jsonUsers.data && jsonUsers.data.length > 0) {
+      adminUsers = jsonUsers.data;
+    }
+
+    const resOrders = await fetch('http://localhost:5000/api/orders');
+    const jsonOrders = await resOrders.json();
+    if (jsonOrders.success && jsonOrders.data && jsonOrders.data.length > 0) {
+      adminOrders = jsonOrders.data;
     }
   } catch(e) {}
 
@@ -178,15 +215,28 @@ async function renderAllAdminData() {
   renderMenuTable();
   renderBookingTable();
   renderUserTable();
+  renderOrderTable();
 }
 
 function renderKPIs() {
   const availableCount = adminMenu.filter(m => m.inStock).length;
   const activeBookingsCount = adminBookings.filter(b => b.status === 'Pending' || b.status === 'Dikonfirmasi').length;
+  const totalRevenue = adminOrders.reduce((sum, o) => {
+    const isPaid = o.payment_status === 'paid' || o.payment_status === 'settlement' || o.payment_status === 'Lunas';
+    return sum + (isPaid ? Number(o.total_amount || 0) : 0);
+  }, 0);
 
-  document.getElementById('kpi-menu-count').textContent = `${availableCount} / ${adminMenu.length} Item`;
-  document.getElementById('kpi-bookings').textContent = `${activeBookingsCount} Meja`;
-  document.getElementById('kpi-users-count').textContent = `${adminUsers.length} User`;
+  const revenueEl = document.getElementById('kpi-revenue');
+  if (revenueEl) revenueEl.textContent = formatIDR(totalRevenue || 135000);
+
+  const menuEl = document.getElementById('kpi-menu-count');
+  if (menuEl) menuEl.textContent = `${availableCount} / ${adminMenu.length} Item`;
+
+  const bookingEl = document.getElementById('kpi-bookings');
+  if (bookingEl) bookingEl.textContent = `${activeBookingsCount} Meja`;
+
+  const userEl = document.getElementById('kpi-users-count');
+  if (userEl) userEl.textContent = `${adminUsers.length} User`;
 }
 
 // Render Overview Table
@@ -331,6 +381,97 @@ function renderUserTable() {
       </td>
     </tr>
   `).join('');
+}
+
+// Render Order Control Table
+function renderOrderTable() {
+  const tbody = document.getElementById('admin-order-rows');
+  if (!tbody) return;
+
+  if (adminOrders.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+          Belum ada data pesanan user yang masuk.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = adminOrders.map(o => {
+    const itemsSummary = o.items && Array.isArray(o.items)
+      ? o.items.map(i => `${i.qty}x ${i.name}`).join(', ')
+      : 'Rincian Pesanan';
+
+    const isPaid = o.payment_status === 'paid' || o.payment_status === 'settlement' || o.payment_status === 'Lunas';
+    const isFailed = o.payment_status === 'failed' || o.payment_status === 'cancel' || o.payment_status === 'Batal';
+
+    let statusBadge = '';
+    if (isPaid) {
+      statusBadge = `<span class="status-badge status-available"><i class="fa-solid fa-check"></i> Lunas</span>`;
+    } else if (isFailed) {
+      statusBadge = `<span class="status-badge status-empty"><i class="fa-solid fa-xmark"></i> Batal</span>`;
+    } else {
+      statusBadge = `<span class="status-badge status-pending"><i class="fa-solid fa-clock"></i> Pending</span>`;
+    }
+
+    const cleanPhone = o.customer_phone ? o.customer_phone.replace(/[^0-9]/g, '') : '';
+
+    return `
+      <tr>
+        <td style="font-weight: 700; color: var(--primary-navy);">${o.id}</td>
+        <td style="font-weight: 700;">${o.customer_name || 'Pelanggan'}</td>
+        <td>+${cleanPhone || '-'}</td>
+        <td>${o.order_type || 'Dine-in'}</td>
+        <td style="font-size: 0.85rem; max-width: 220px; color: var(--text-muted);">${itemsSummary}</td>
+        <td style="font-weight: 700; color: var(--primary-brand);">${formatIDR(o.total_amount || 0)}</td>
+        <td>${statusBadge}</td>
+        <td class="col-action">
+          <div class="action-btn-group">
+            <button class="btn ${isPaid ? 'btn-secondary' : 'btn-primary'} btn-sm btn-action-main" onclick="toggleOrderStatus('${o.id}')">
+              ${isPaid ? 'Set Pending' : 'Tandai Lunas'}
+            </button>
+            ${cleanPhone ? `
+              <a href="https://wa.me/${cleanPhone}" target="_blank" class="btn btn-secondary btn-sm btn-action-secondary" style="color: #059669; border-color: #A7F3D0; background-color: #ECFDF5; text-decoration: none;" title="Hubungi WA">
+                <i class="fa-brands fa-whatsapp"></i>
+              </a>
+            ` : ''}
+            <button class="btn btn-secondary btn-sm btn-action-secondary" style="color: #DC2626; border-color: #FCA5A5; background-color: #FEF2F2;" onclick="deleteOrder('${o.id}')" title="Hapus Order">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function toggleOrderStatus(id) {
+  const order = adminOrders.find(o => o.id === id);
+  if (order) {
+    order.payment_status = (order.payment_status === 'paid' || order.payment_status === 'Lunas') ? 'pending' : 'paid';
+    localStorage.setItem('bd_admin_orders', JSON.stringify(adminOrders));
+
+    // Also update backend if available
+    try {
+      fetch(`http://localhost:5000/api/orders/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_status: order.payment_status })
+      });
+    } catch(e) {}
+
+    renderAllAdminData();
+  }
+}
+
+function deleteOrder(id) {
+  if (confirm('Apakah Anda yakin ingin menghapus catatan pesanan ini?')) {
+    adminOrders = adminOrders.filter(o => o.id !== id);
+    localStorage.setItem('bd_admin_orders', JSON.stringify(adminOrders));
+    renderAllAdminData();
+  }
 }
 
 function getStatusClass(status) {

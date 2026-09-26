@@ -410,6 +410,11 @@
             <i class="fa-solid fa-users"></i> <span>Pelanggan / User</span>
           </a>
         </li>
+        <li class="admin-nav-item">
+          <a class="admin-nav-link" data-tab="tab-orders">
+            <i class="fa-solid fa-receipt"></i> <span>Pesanan User</span>
+          </a>
+        </li>
       </ul>
 
       <div style="padding: 1.25rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
@@ -602,6 +607,35 @@
                   </tr>
                 </thead>
                 <tbody id="admin-user-rows">
+                  <!-- Rendered dynamically by admin.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <!-- TAB 5: MANAJEMEN PESANAN USER & MIDTRANS -->
+        <section class="tab-content" id="tab-orders">
+          <div class="table-card">
+            <div class="table-card-header">
+              <div>
+                <h2 class="table-card-title">Manajemen Pesanan User & Gateway Midtrans</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Pantau seluruh transaksi pesanan online pelanggan, item yang dipesan, dan status pembayaran Midtrans.</p>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID Order</th>
+                    <th>Nama Pelanggan</th>
+                    <th>Nomor WhatsApp</th>
+                    <th>Tipe Pesanan</th>
+                    <th>Rincian Item</th>
+                    <th>Total Bayar</th>
+                    <th>Status Pembayaran</th>
+                    <th>Aksi Kontrol</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-order-rows">
                   <!-- Rendered dynamically by admin.js -->
                 </tbody>
               </table>

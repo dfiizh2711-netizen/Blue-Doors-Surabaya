@@ -249,6 +249,40 @@ function initCheckoutModal() {
 
       showToast('Memproses pesanan & gateway pembayaran Midtrans...', 'info');
 
+      // Save order to bd_admin_orders in localStorage for Admin Dashboard visibility
+      const currentOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [
+        {
+          id: 'BD-ORD-948120',
+          customer_name: 'Budi Santoso',
+          customer_phone: '6281234567890',
+          order_type: 'Dine-in / Minum di Tempat',
+          total_amount: 87000,
+          items: [
+            { id: 'p1', name: 'Kyoto Latte', price: 42000, qty: 1 },
+            { id: 'p2', name: 'Fleur Noire', price: 45000, qty: 1 }
+          ],
+          payment_status: 'paid',
+          created_at: new Date().toISOString()
+        }
+      ];
+
+      const localOrderRef = 'BD-ORD-' + Math.floor(100000 + Math.random() * 900000);
+      const grossAmount = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+      const localOrderObj = {
+        id: localOrderRef,
+        customer_name: name,
+        customer_phone: phone.replace(/[^0-9]/g, '') || phone,
+        order_type: method,
+        total_amount: grossAmount,
+        items: [...cart],
+        payment_status: 'paid',
+        created_at: new Date().toISOString()
+      };
+
+      currentOrders.unshift(localOrderObj);
+      localStorage.setItem('bd_admin_orders', JSON.stringify(currentOrders));
+
       try {
         const response = await fetch(`${API_BASE}/orders/checkout`, {
           method: 'POST',
