@@ -21,7 +21,9 @@
     .admin-sidebar {
       width: 260px;
       height: 100vh;
+      height: 100dvh;
       max-height: 100vh;
+      max-height: 100dvh;
       position: sticky;
       top: 0;
       background-color: var(--primary-navy);
@@ -31,13 +33,13 @@
       flex-direction: column;
       justify-content: space-between;
       border-right: 1px solid rgba(255, 255, 255, 0.1);
-      transition: transform var(--transition-normal);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       z-index: 500;
       overflow: hidden;
     }
     
     .admin-sidebar-header {
-      padding: 1.25rem 1rem;
+      padding: 1rem 0.85rem;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       display: flex;
       align-items: center;
@@ -46,12 +48,12 @@
     }
     
     .admin-sidebar-header img {
-      height: 44px;
-      width: 44px;
+      height: 40px;
+      width: 40px;
       object-fit: contain;
       background-color: #FFFFFF;
       border-radius: 50%;
-      padding: 5px;
+      padding: 4px;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
       border: 2px solid rgba(255, 255, 255, 0.3);
       flex-shrink: 0;
@@ -59,7 +61,7 @@
 
     .admin-sidebar-title {
       font-family: var(--font-heading);
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       font-weight: 700;
       color: #FFFFFF;
     }
@@ -76,13 +78,17 @@
 
     .admin-nav {
       list-style: none;
-      padding: 1rem 0.75rem;
+      padding: 0.6rem 0.6rem;
       flex-grow: 1;
+      flex-shrink: 1;
+      min-height: 0;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .admin-sidebar-footer {
-      padding: 1rem 0.85rem;
+      padding: 0.75rem 0.85rem;
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
       border-top: 1px solid rgba(255, 255, 255, 0.1);
       flex-shrink: 0;
       margin-top: auto;
@@ -90,7 +96,7 @@
     }
 
     .admin-nav-item {
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.25rem;
     }
 
     .admin-nav-link {
@@ -348,12 +354,22 @@
       .admin-sidebar {
         position: fixed;
         top: 0;
-        left: -260px;
+        left: 0;
         height: 100vh;
+        height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+        transform: translateX(-100%);
+        box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5);
+        z-index: 99999;
       }
 
       .admin-sidebar.active {
-        transform: translateX(260px);
+        transform: translateX(0);
+      }
+
+      .admin-sidebar-overlay {
+        z-index: 99990;
       }
 
       .admin-sidebar-overlay.active {
