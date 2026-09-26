@@ -742,11 +742,134 @@ function playCompletionChime() {
 }
 
 // Render Live Notification Banner on User Screen
+// Notification History Storage & UI Management
+function getStoredNotifications() {
+  try {
+    return JSON.parse(localStorage.getItem('bd_user_notifications')) || [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function saveStoredNotifications(list) {
+  try {
+    localStorage.setItem('bd_user_notifications', JSON.stringify(list));
+  } catch(e) {}
+  updateNotifBadgeCount();
+  renderNotificationList();
+}
+
+function updateNotifBadgeCount() {
+  const notifs = getStoredNotifications();
+  const badges = document.querySelectorAll('.notif-badge-count');
+  const count = notifs.length;
+  badges.forEach(b => {
+    b.textContent = count;
+    b.setAttribute('data-count', count);
+    b.style.display = count > 0 ? 'inline-flex' : 'none';
+  });
+}
+
+function renderNotificationList() {
+  const container = document.getElementById('notif-body-list');
+  if (!container) return;
+
+  const list = getStoredNotifications();
+
+  if (!list || list.length === 0) {
+    container.innerHTML = `
+      <div class="empty-notif-state">
+        <i class="fa-solid fa-bell-slash"></i>
+        <p style="font-weight: 700; color: var(--primary-navy); margin-bottom: 0.25rem;">Belum Ada Notifikasi</p>
+        <p style="font-size: 0.825rem; color: var(--text-muted); margin: 0;">Notifikasi status pesanan Anda akan tersimpan di sini.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = list.map(n => `
+    <div class="notif-card-item" id="notif-item-${n.id}">
+      <div class="notif-card-icon">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <div class="notif-card-content">
+        <div class="notif-card-header">
+          <span class="notif-card-title">PESANAN SELESAI</span>
+          <span class="notif-card-time">${n.timestamp || ''}</span>
+        </div>
+        <div class="notif-card-badge">${n.orderId || 'BD-ORD'}</div>
+        <p class="notif-card-msg">
+          Pesanan atas nama <strong>${n.customerName || 'Pelanggan'}</strong> telah diselesaikan & lunas.
+        </p>
+      </div>
+      <button type="button" class="btn-delete-notif" onclick="deleteSingleNotification('${n.id}')" title="Hapus Notifikasi Ini" aria-label="Hapus Notifikasi">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
+function openNotifDrawer() {
+  const drawer = document.getElementById('notif-drawer');
+  const overlay = document.getElementById('notif-overlay');
+  if (drawer) drawer.classList.add('active');
+  if (overlay) overlay.classList.add('active');
+  renderNotificationList();
+}
+
+function closeNotifDrawer() {
+  const drawer = document.getElementById('notif-drawer');
+  const overlay = document.getElementById('notif-overlay');
+  if (drawer) drawer.classList.remove('active');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function toggleNotifDrawer() {
+  const drawer = document.getElementById('notif-drawer');
+  if (drawer && drawer.classList.contains('active')) {
+    closeNotifDrawer();
+  } else {
+    openNotifDrawer();
+  }
+}
+
+function deleteSingleNotification(notifId) {
+  let list = getStoredNotifications();
+  list = list.filter(n => n.id !== notifId);
+  saveStoredNotifications(list);
+}
+
+function clearAllNotifications() {
+  if (confirm('Apakah Anda yakin ingin menghapus seluruh riwayat notifikasi pesanan?')) {
+    saveStoredNotifications([]);
+  }
+}
+
+// Render Live Notification Banner on User Screen & Save to Inbox
 function showLiveOrderNotification(data) {
   const isCompleted = data.status === 'paid' || data.status === 'Lunas' || data.status === 'settlement';
   if (!isCompleted) return;
 
-  // Remove any existing notification first
+  // Save to notification history inbox!
+  const notifId = 'NOTIF-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+  const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' · ' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+
+  const currentNotifs = getStoredNotifications();
+  const isDuplicate = currentNotifs.some(n => n.orderId === data.orderId && (Date.now() - (n.rawTime || 0) < 5000));
+
+  if (!isDuplicate) {
+    currentNotifs.unshift({
+      id: notifId,
+      orderId: data.orderId || 'BD-ORD',
+      customerName: data.customerName || 'Pelanggan',
+      status: data.status || 'paid',
+      timestamp: nowStr,
+      rawTime: Date.now()
+    });
+    saveStoredNotifications(currentNotifs);
+  }
+
+  // Remove any existing toast banner first
   const existing = document.getElementById('live-order-notification-banner');
   if (existing) existing.remove();
 
@@ -781,7 +904,7 @@ function showLiveOrderNotification(data) {
 
   document.body.appendChild(banner);
 
-  // Auto dismiss after 10 seconds
+  // Auto dismiss toast banner after 10 seconds
   setTimeout(() => {
     dismissLiveNotification();
   }, 10000);
@@ -797,6 +920,8 @@ function dismissLiveNotification() {
 
 // Live Listener Initialization (BroadcastChannel + Polling + Supabase Realtime)
 function initLiveOrderNotifier() {
+  updateNotifBadgeCount();
+
   // 1. BroadcastChannel for Instant Tab-to-Tab Broadcast (0ms latency)
   if ('BroadcastChannel' in window) {
     const bc = new BroadcastChannel('bluedoors_orders_channel');
@@ -869,5 +994,6 @@ function initLiveOrderNotifier() {
 document.addEventListener('DOMContentLoaded', () => {
   initLiveOrderNotifier();
 });
+
 
 

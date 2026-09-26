@@ -43,6 +43,10 @@
       </ul>
 
       <div class="nav-actions">
+        <button class="btn btn-secondary btn-notif-toggle" onclick="toggleNotifDrawer()" aria-label="Notifikasi Pesanan" title="Pusat Notifikasi">
+          <i class="fa-solid fa-bell"></i>
+          <span class="notif-badge-count">0</span>
+        </button>
         <button class="btn btn-cart btn-cart-toggle" aria-label="Buka Keranjang Belanja">
           <i class="fa-solid fa-bag-shopping"></i>
           <span>Keranjang</span>
@@ -470,6 +474,28 @@
       </div>
     </div>
   </div>
+
+  <!-- Notification Center Drawer -->
+  <div class="cart-overlay" id="notif-overlay" onclick="closeNotifDrawer()"></div>
+  <aside class="cart-drawer" id="notif-drawer" aria-label="Pusat Notifikasi Pesanan">
+    <div class="cart-header">
+      <div style="display: flex; align-items: center; gap: 0.6rem;">
+        <i class="fa-solid fa-bell" style="color: var(--primary-brand); font-size: 1.2rem;"></i>
+        <h2 style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--primary-navy);">Notifikasi Pesanan</h2>
+      </div>
+      <button class="btn-close-drawer" onclick="closeNotifDrawer()" aria-label="Tutup Notifikasi">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="notif-body" id="notif-body-list">
+      <!-- Dynamic Notifications -->
+    </div>
+    <div class="notif-footer-actions">
+      <button class="btn btn-secondary btn-sm" onclick="clearAllNotifications()" style="width: 100%; color: #DC2626; border-color: #FCA5A5; background-color: #FEF2F2;">
+        <i class="fa-solid fa-trash-can"></i> Hapus Semua Notifikasi
+      </button>
+    </div>
+  </aside>
 
   <!-- Supabase JS Client SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
