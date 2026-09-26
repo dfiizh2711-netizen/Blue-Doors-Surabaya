@@ -26,42 +26,9 @@ const INITIAL_MENU_ITEMS = [
   { id: 'p18', name: 'The Au Citron', category: 'Non-Kopi & Tea', price: 38000, inStock: true, img: 'menus/The Au Citron.png' }
 ];
 
-const INITIAL_BOOKINGS = [
-  { id: 'BD-RSV-849201', name: 'Ahmad Rizky', phone: '081234567891', date: '2026-09-24', time: '14:30', guests: '3-4', area: 'Indoor AC', status: 'Dikonfirmasi' },
-  { id: 'BD-RSV-719302', name: 'Siti Sarah', phone: '081987654321', date: '2026-09-24', time: '16:00', guests: '5-8', area: 'Outdoor Garden', status: 'Pending' },
-  { id: 'BD-RSV-391048', name: 'Budi Pratama', phone: '081345678902', date: '2026-09-24', time: '19:00', guests: '1-2', area: 'Espresso Bar', status: 'Dikonfirmasi' },
-  { id: 'BD-RSV-102948', name: 'Dewi Lestari', phone: '081567890123', date: '2026-09-25', time: '10:00', guests: '3-4', area: 'Indoor AC', status: 'Pending' }
-];
-
+const INITIAL_BOOKINGS = [];
 const INITIAL_USERS = [];
-
-const INITIAL_ORDERS = [
-  {
-    id: 'BD-ORD-948120',
-    customer_name: 'Budi Santoso',
-    customer_phone: '6281234567890',
-    order_type: 'Dine-in / Minum di Tempat',
-    total_amount: 87000,
-    items: [
-      { id: 'p1', name: 'Kyoto Latte', price: 42000, qty: 1 },
-      { id: 'p2', name: 'Fleur Noire', price: 45000, qty: 1 }
-    ],
-    payment_status: 'pending',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'BD-ORD-381920',
-    customer_name: 'Siti Sarah',
-    customer_phone: '6281987654321',
-    order_type: 'Takeaway / Bawa Pulang',
-    total_amount: 48000,
-    items: [
-      { id: 'p17', name: 'Strawberry Matcha Latte', price: 48000, qty: 1 }
-    ],
-    payment_status: 'pending',
-    created_at: new Date().toISOString()
-  }
-];
+const INITIAL_ORDERS = [];
 
 // App Local Storage State
 let adminMenu = JSON.parse(localStorage.getItem('bd_admin_menu')) || INITIAL_MENU_ITEMS;
@@ -75,9 +42,32 @@ document.addEventListener('DOMContentLoaded', () => {
   initTabSwitching();
   initMobileSidebar();
   initAdminModals();
-  renderAllAdminData();
+  renderAllAdminData(true);
   initAdminLiveListeners();
 });
+
+// Admin Data Loader Controls
+function showAdminDataLoader(text = 'Menyinkronkan Data Real-Time...') {
+  const loader = document.getElementById('admin-data-loader');
+  if (loader) {
+    const titleEl = loader.querySelector('.admin-loader-title');
+    if (titleEl) titleEl.textContent = text;
+    loader.classList.remove('fade-out');
+    loader.style.display = 'flex';
+  }
+}
+
+function hideAdminDataLoader() {
+  const loader = document.getElementById('admin-data-loader');
+  if (loader) {
+    loader.classList.add('fade-out');
+    setTimeout(() => {
+      if (loader.classList.contains('fade-out')) {
+        loader.style.display = 'none';
+      }
+    }, 450);
+  }
+}
 
 function checkAdminAuth() {
   const isAuth = sessionStorage.getItem('bd_admin_session') === 'true';
@@ -107,6 +97,7 @@ function initAdminAuthForm() {
       if (u === 'admin' && p === 'admin123') {
         sessionStorage.setItem('bd_admin_session', 'true');
         checkAdminAuth();
+        renderAllAdminData(true);
       } else {
         alert('Kredensial Admin Salah! Gunakan username: admin dan password: admin123');
       }
@@ -188,7 +179,11 @@ function closeMobileSidebar() {
 }
 
 // Render Core Admin Data
-async function renderAllAdminData() {
+async function renderAllAdminData(showLoader = true) {
+  if (showLoader) {
+    showAdminDataLoader('Menyinkronkan Data Real-Time Admin...');
+  }
+
   adminMenu = JSON.parse(localStorage.getItem('bd_admin_menu')) || INITIAL_MENU_ITEMS;
   adminBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || INITIAL_BOOKINGS;
   adminUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || INITIAL_USERS;
@@ -225,12 +220,11 @@ async function renderAllAdminData() {
       }
 
       const dbOrders = await window.BlueDoorsDB.fetchOrders();
-      const localOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || INITIAL_ORDERS;
+      if (Array.isArray(dbOrders)) {
+        let mergedOrdersMap = new Map();
+        const localOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [];
+        localOrders.forEach(o => mergedOrdersMap.set(o.id, o));
 
-      let mergedOrdersMap = new Map();
-      localOrders.forEach(o => mergedOrdersMap.set(o.id, o));
-
-      if (dbOrders && dbOrders.length > 0) {
         dbOrders.forEach(o => {
           const existing = mergedOrdersMap.get(o.id);
           mergedOrdersMap.set(o.id, {
@@ -244,18 +238,16 @@ async function renderAllAdminData() {
             created_at: o.created_at || new Date().toISOString()
           });
         });
+        adminOrders = Array.from(mergedOrdersMap.values());
+        localStorage.setItem('bd_admin_orders', JSON.stringify(adminOrders));
       }
 
-      adminOrders = Array.from(mergedOrdersMap.values());
-      localStorage.setItem('bd_admin_orders', JSON.stringify(adminOrders));
-
       const dbBookings = await window.BlueDoorsDB.fetchBookings();
-      const localBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || INITIAL_BOOKINGS;
+      if (Array.isArray(dbBookings)) {
+        let mergedBookingsMap = new Map();
+        const localBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || [];
+        localBookings.forEach(b => mergedBookingsMap.set(b.id, b));
 
-      let mergedBookingsMap = new Map();
-      localBookings.forEach(b => mergedBookingsMap.set(b.id, b));
-
-      if (dbBookings && dbBookings.length > 0) {
         dbBookings.forEach(b => {
           const existing = mergedBookingsMap.get(b.id);
           mergedBookingsMap.set(b.id, {
@@ -269,10 +261,9 @@ async function renderAllAdminData() {
             status: existing ? existing.status : (b.status || 'Pending')
           });
         });
+        adminBookings = Array.from(mergedBookingsMap.values());
+        localStorage.setItem('bd_admin_bookings', JSON.stringify(adminBookings));
       }
-
-      adminBookings = Array.from(mergedBookingsMap.values());
-      localStorage.setItem('bd_admin_bookings', JSON.stringify(adminBookings));
     } catch(err) {
       console.warn('Supabase fetch in admin failed:', err);
     }
@@ -284,18 +275,24 @@ async function renderAllAdminData() {
   renderBookingTable();
   renderUserTable();
   renderOrderTable();
+
+  if (showLoader) {
+    setTimeout(() => {
+      hideAdminDataLoader();
+    }, 350);
+  }
 }
 
 function renderKPIs() {
   const availableCount = adminMenu.filter(m => m.inStock).length;
   const activeBookingsCount = adminBookings.filter(b => b.status === 'Pending' || b.status === 'Dikonfirmasi').length;
   const totalRevenue = adminOrders.reduce((sum, o) => {
-    const isPaid = o.payment_status === 'paid' || o.payment_status === 'settlement' || o.payment_status === 'Lunas';
+    const isPaid = o.payment_status === 'paid' || o.payment_status === 'settlement' || o.payment_status === 'Lunas' || o.payment_status === 'Selesai';
     return sum + (isPaid ? Number(o.total_amount || 0) : 0);
   }, 0);
 
   const revenueEl = document.getElementById('kpi-revenue');
-  if (revenueEl) revenueEl.textContent = formatIDR(totalRevenue || 135000);
+  if (revenueEl) revenueEl.textContent = formatIDR(totalRevenue || 0);
 
   const menuEl = document.getElementById('kpi-menu-count');
   if (menuEl) menuEl.textContent = `${availableCount} / ${adminMenu.length} Item`;
