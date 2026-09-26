@@ -174,6 +174,40 @@ window.BlueDoorsDB = {
     }
   },
 
+  async updateBookingStatus(bookingId, status) {
+    if (!supabaseClient) return false;
+    try {
+      let res = await supabaseClient.from('bluedoors_bookings').update({ status }).eq('id', bookingId);
+      if (res.error) {
+        res = await supabaseClient.schema('bluedoors').from('bookings').update({ status }).eq('id', bookingId);
+      }
+      if (res.error) {
+        res = await supabaseClient.from('bookings').update({ status }).eq('id', bookingId);
+      }
+      return !res.error;
+    } catch (err) {
+      console.error('Supabase updateBookingStatus error:', err);
+      return false;
+    }
+  },
+
+  async deleteBooking(bookingId) {
+    if (!supabaseClient) return false;
+    try {
+      let res = await supabaseClient.from('bluedoors_bookings').delete().eq('id', bookingId);
+      if (res.error) {
+        res = await supabaseClient.schema('bluedoors').from('bookings').delete().eq('id', bookingId);
+      }
+      if (res.error) {
+        res = await supabaseClient.from('bookings').delete().eq('id', bookingId);
+      }
+      return !res.error;
+    } catch (err) {
+      console.error('Supabase deleteBooking error:', err);
+      return false;
+    }
+  },
+
   async fetchUsers() {
     if (!supabaseClient) return [];
     let res = await supabaseClient.schema('bluedoors').from('users').select('*').order('created_at', { ascending: false });

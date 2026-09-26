@@ -256,9 +256,29 @@ async function renderAllAdminData() {
       }
 
       const dbBookings = await window.BlueDoorsDB.fetchBookings();
+      const localBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || INITIAL_BOOKINGS;
+
+      let mergedBookingsMap = new Map();
+      localBookings.forEach(b => mergedBookingsMap.set(b.id, b));
+
       if (dbBookings && dbBookings.length > 0) {
-        adminBookings = dbBookings;
+        dbBookings.forEach(b => {
+          const existing = mergedBookingsMap.get(b.id);
+          mergedBookingsMap.set(b.id, {
+            id: b.id,
+            name: b.name,
+            phone: b.phone,
+            date: b.date,
+            time: b.time,
+            guests: b.guests || '1-2',
+            area: b.area || 'Indoor AC',
+            status: existing ? existing.status : (b.status || 'Pending')
+          });
+        });
       }
+
+      adminBookings = Array.from(mergedBookingsMap.values());
+      localStorage.setItem('bd_admin_bookings', JSON.stringify(adminBookings));
     } catch(err) {
       console.warn('Supabase fetch in admin failed:', err);
     }
@@ -396,20 +416,56 @@ function renderBookingTable() {
   }).join('');
 }
 
-function updateBookingStatus(id, newStatus) {
+async function updateBookingStatus(id, newStatus) {
   const b = adminBookings.find(item => item.id === id);
   if (b) {
     b.status = newStatus;
     localStorage.setItem('bd_admin_bookings', JSON.stringify(adminBookings));
-    renderAllAdminData();
+
+    // Update UI immediately
+    renderKPIs();
+    renderOverviewBookings();
+    renderBookingTable();
+
+    // Sync to Supabase Cloud
+    if (window.BlueDoorsDB) {
+      try {
+        await window.BlueDoorsDB.updateBookingStatus(id, newStatus);
+      } catch(e) {}
+    }
+
+    // Sync to Backend API
+    try {
+      await fetch(`http://localhost:5000/api/bookings/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+    } catch(e) {}
   }
 }
 
-function deleteBooking(id) {
-  if (confirm('Apakah Anda yakin ingin membatalkan reservasi ini?')) {
+async function deleteBooking(id) {
+  if (confirm('Apakah Anda yakin ingin membatalkan/menghapus reservasi ini?')) {
     adminBookings = adminBookings.filter(b => b.id !== id);
     localStorage.setItem('bd_admin_bookings', JSON.stringify(adminBookings));
-    renderAllAdminData();
+
+    // Update UI immediately
+    renderKPIs();
+    renderOverviewBookings();
+    renderBookingTable();
+
+    // Sync deletion to Supabase Cloud
+    if (window.BlueDoorsDB) {
+      try {
+        await window.BlueDoorsDB.deleteBooking(id);
+      } catch(e) {}
+    }
+
+    // Sync deletion to Backend API
+    try {
+      await fetch(`http://localhost:5000/api/bookings/${id}`, { method: 'DELETE' });
+    } catch(e) {}
   }
 }
 
