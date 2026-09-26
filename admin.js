@@ -52,7 +52,7 @@ const INITIAL_ORDERS = [
       { id: 'p1', name: 'Kyoto Latte', price: 42000, qty: 1 },
       { id: 'p2', name: 'Fleur Noire', price: 45000, qty: 1 }
     ],
-    payment_status: 'paid',
+    payment_status: 'pending',
     created_at: new Date().toISOString()
   },
   {
@@ -586,22 +586,21 @@ function renderOrderTable() {
     let statusBadge = '';
     let mainActionBtn = '';
 
-    if (st === 'confirmed' || st === 'diterima') {
-      statusBadge = `<span class="status-badge" style="background: #E0F2FE; color: #0369A1; font-weight: 700;"><i class="fa-solid fa-cookie-bite"></i> DITERIMA</span>`;
-      mainActionBtn = `<button class="btn btn-primary btn-sm" style="background-color: #2563EB; border-color: #2563EB;" onclick="advanceOrderStatus('${o.id}', 'ready')"><i class="fa-solid fa-bell-concierge"></i> Pesanan Siap Ambil</button>`;
-    } else if (st === 'ready' || st === 'siap' || st === 'siap ambil') {
+    if (st === 'ready' || st === 'siap' || st === 'siap ambil') {
+      // Step 2 (image copy 4.png)
       statusBadge = `<span class="status-badge" style="background: #FEF3C7; color: #92400E; font-weight: 700;"><i class="fa-solid fa-bag-shopping"></i> SIAP DIAMBIL</span>`;
       mainActionBtn = `<button class="btn btn-primary btn-sm" style="background-color: #059669; border-color: #059669;" onclick="advanceOrderStatus('${o.id}', 'paid')"><i class="fa-solid fa-circle-check"></i> Selesaikan Pesanan</button>`;
-    } else if (st === 'paid' || st === 'lunas' || st === 'settlement') {
+    } else if (st === 'paid' || st === 'lunas' || st === 'settlement' || st === 'selesai') {
+      // Step 3 (image copy 5.png)
       statusBadge = `<span class="status-badge status-available" style="font-weight: 700;"><i class="fa-solid fa-check-double"></i> SELESAI / LUNAS</span>`;
       mainActionBtn = `<button class="btn btn-secondary btn-sm" style="color: #64748B;" onclick="advanceOrderStatus('${o.id}', 'pending')">Reset Status</button>`;
     } else if (st === 'failed' || st === 'cancel' || st === 'batal') {
       statusBadge = `<span class="status-badge status-empty" style="font-weight: 700;"><i class="fa-solid fa-xmark"></i> BATAL</span>`;
-      mainActionBtn = `<button class="btn btn-primary btn-sm" style="background-color: #C85C32; border-color: #C85C32;" onclick="advanceOrderStatus('${o.id}', 'confirmed')"><i class="fa-solid fa-check"></i> Konfirmasi Pesanan</button>`;
+      mainActionBtn = `<button class="btn btn-primary btn-sm" style="background-color: #2563EB; border-color: #2563EB;" onclick="advanceOrderStatus('${o.id}', 'ready')"><i class="fa-solid fa-bell-concierge"></i> Pesanan Siap Ambil</button>`;
     } else {
-      // Pending
-      statusBadge = `<span class="status-badge status-pending" style="font-weight: 700;"><i class="fa-solid fa-clock"></i> PENDING</span>`;
-      mainActionBtn = `<button class="btn btn-primary btn-sm" style="background-color: #C85C32; border-color: #C85C32;" onclick="advanceOrderStatus('${o.id}', 'confirmed')"><i class="fa-solid fa-check"></i> Konfirmasi Pesanan</button>`;
+      // Step 1 (image copy 3.png) - Default for Pending / New Order / Diterima / Confirmed
+      statusBadge = `<span class="status-badge" style="background: #E0F2FE; color: #0369A1; font-weight: 700;"><i class="fa-solid fa-cookie-bite"></i> DITERIMA</span>`;
+      mainActionBtn = `<button class="btn btn-primary btn-sm" style="background-color: #2563EB; border-color: #2563EB;" onclick="advanceOrderStatus('${o.id}', 'ready')"><i class="fa-solid fa-bell-concierge"></i> Pesanan Siap Ambil</button>`;
     }
 
     const cleanPhone = o.customer_phone ? o.customer_phone.replace(/[^0-9]/g, '') : '';
