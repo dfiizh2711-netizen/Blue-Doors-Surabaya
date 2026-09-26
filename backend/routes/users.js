@@ -7,8 +7,12 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     if (supabase) {
-      const { data, error } = await supabase.from('users').select('*');
-      if (!error && data) return res.json({ success: true, data });
+      let { data, error } = await supabase.from('bluedoors_users').select('*').order('created_at', { ascending: false });
+      if (error || !data) {
+        const resOld = await supabase.from('users').select('*').order('created_at', { ascending: false });
+        data = resOld.data;
+      }
+      if (data && data.length > 0) return res.json({ success: true, data });
     }
     res.json({ success: true, data: DB_STORE.users });
   } catch (err) {
@@ -25,17 +29,20 @@ router.post('/register', async (req, res) => {
     }
 
     const newUser = {
-      id: 'USR-' + Math.floor(100 + Math.random() * 900),
-      name,
-      phone: contact,
-      favoriteArea: 'Indoor AC',
-      totalVisits: 1,
+      id: 'USR-' + Math.floor(10000 + Math.random() * 90000),
+      name: name.trim(),
+      phone: contact.trim(),
+      favorite_area: 'Indoor AC',
+      total_visits: 1,
       status: 'Aktif',
       created_at: new Date().toISOString()
     };
 
     if (supabase) {
-      await supabase.from('users').insert([newUser]);
+      const resIns = await supabase.from('bluedoors_users').insert([newUser]);
+      if (resIns.error) {
+        await supabase.from('users').insert([newUser]);
+      }
     }
     DB_STORE.users.push(newUser);
 

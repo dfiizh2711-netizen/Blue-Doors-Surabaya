@@ -553,10 +553,11 @@ function initLoginModal() {
         { id: 'USR-005', name: 'Hendra Gunawan', phone: '6281789012345', favoriteArea: 'Outdoor Garden', totalVisits: 15, status: 'VIP' }
       ];
 
-      const cleanPhone = contact.replace(/[^0-9]/g, '') || contact;
+      const cleanPhone = contact.trim();
+      const uniqueId = 'USR-' + Math.floor(10000 + Math.random() * 90000);
       const newUser = {
-        id: 'USR-00' + (currentUsers.length + 1),
-        name: name,
+        id: uniqueId,
+        name: name.trim(),
         phone: cleanPhone,
         favoriteArea: 'Indoor AC',
         totalVisits: 1,
@@ -568,7 +569,9 @@ function initLoginModal() {
 
       // Direct Client Sync to Supabase Cloud
       if (window.BlueDoorsDB) {
-        window.BlueDoorsDB.insertUser(newUser);
+        try {
+          await window.BlueDoorsDB.insertUser(newUser);
+        } catch(e) {}
       }
 
       try {

@@ -28,10 +28,16 @@ window.BlueDoorsDB = {
   async insertUser(userObj) {
     if (!supabaseClient) return null;
 
+    const uniqueId = (userObj.id && !userObj.id.startsWith('USR-00')) 
+      ? userObj.id 
+      : ('USR-' + Math.floor(10000 + Math.random() * 90000));
+
+    const phoneVal = String(userObj.phone || userObj.contact || '').trim();
+
     const basicPayload = {
-      id: userObj.id || ('USR-' + Math.floor(100 + Math.random() * 900)),
-      name: userObj.name,
-      phone: String(userObj.phone || '').replace(/[^0-9]/g, '') || userObj.phone,
+      id: uniqueId,
+      name: userObj.name || 'User Baru',
+      phone: phoneVal || ('+628' + Math.floor(10000000 + Math.random() * 90000000)),
       favorite_area: userObj.favoriteArea || userObj.favorite_area || 'Indoor AC'
     };
 
@@ -41,12 +47,12 @@ window.BlueDoorsDB = {
       status: userObj.status || 'Aktif'
     };
 
-    let res = await supabaseClient.schema('bluedoors').from('users').insert([fullPayload]).select();
+    let res = await supabaseClient.from('bluedoors_users').insert([fullPayload]).select();
     if (res.error) {
-      res = await supabaseClient.schema('bluedoors').from('users').insert([basicPayload]).select();
+      res = await supabaseClient.from('bluedoors_users').insert([basicPayload]).select();
     }
     if (res.error) {
-      res = await supabaseClient.from('bluedoors_users').insert([fullPayload]).select();
+      res = await supabaseClient.schema('bluedoors').from('users').insert([fullPayload]).select();
     }
     if (res.error) {
       res = await supabaseClient.from('users').insert([basicPayload]).select();

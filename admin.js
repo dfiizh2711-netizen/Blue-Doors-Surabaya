@@ -217,16 +217,38 @@ async function renderAllAdminData() {
   if (window.BlueDoorsDB) {
     try {
       const dbUsers = await window.BlueDoorsDB.fetchUsers();
-      if (dbUsers && dbUsers.length > 0) {
-        adminUsers = dbUsers.map(u => ({
+      const localUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || INITIAL_USERS;
+      
+      let mergedUsersMap = new Map();
+      
+      // Add local users first
+      localUsers.forEach(u => {
+        mergedUsersMap.set(u.phone || u.id, {
           id: u.id,
           name: u.name,
           phone: u.phone,
-          favoriteArea: u.favorite_area || u.favoriteArea || 'Indoor AC',
-          totalVisits: u.total_visits || u.totalVisits || 1,
+          favoriteArea: u.favoriteArea || u.favorite_area || 'Indoor AC',
+          totalVisits: u.totalVisits || u.total_visits || 1,
           status: u.status || 'Aktif'
-        }));
+        });
+      });
+
+      // Add / override from Supabase DB
+      if (dbUsers && dbUsers.length > 0) {
+        dbUsers.forEach(u => {
+          mergedUsersMap.set(u.phone || u.id, {
+            id: u.id,
+            name: u.name,
+            phone: u.phone,
+            favoriteArea: u.favorite_area || u.favoriteArea || 'Indoor AC',
+            totalVisits: u.total_visits || u.totalVisits || 1,
+            status: u.status || 'Aktif'
+          });
+        });
       }
+
+      adminUsers = Array.from(mergedUsersMap.values());
+      localStorage.setItem('bd_admin_users', JSON.stringify(adminUsers));
 
       const dbOrders = await window.BlueDoorsDB.fetchOrders();
       if (dbOrders && dbOrders.length > 0) {
