@@ -35,10 +35,14 @@ app.use('/api/orders', ordersRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/users', usersRoutes);
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`=======================================================`);
-  console.log(`☕ Blue Doors Surabaya Backend API Running on Port ${PORT}`);
-  console.log(`💳 Midtrans Merchant ID: ${process.env.MIDTRANS_MERCHANT_ID || 'M294142139'}`);
-  console.log(`=======================================================`);
-});
+// Start Server only if executed directly
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`=======================================================`);
+    console.log(`☕ Blue Doors Surabaya Backend API Running on Port ${PORT}`);
+    console.log(`💳 Midtrans Merchant ID: ${process.env.MIDTRANS_MERCHANT_ID || 'M294142139'}`);
+    console.log(`=======================================================`);
+  });
+}
+
+export default app;
