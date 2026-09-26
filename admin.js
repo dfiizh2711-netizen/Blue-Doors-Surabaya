@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initMobileSidebar();
   initAdminModals();
   renderAllAdminData();
+  initAdminLiveListeners();
 });
 
 function checkAdminAuth() {
@@ -729,4 +730,187 @@ function openAdminModal(id) {
 function closeAdminModal(id) {
   const modal = document.getElementById(id);
   if (modal) modal.classList.remove('active');
+}
+
+// ==========================================================================
+// Sound & Live Real-Time Notification System for Admin Dashboard
+// ==========================================================================
+function playAdminNotificationSound() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+
+    // High crisp chime note 1 (D5 - 587.33Hz)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, ctx.currentTime);
+    gain1.gain.setValueAtTime(0.35, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.3);
+
+    // Bright melody completion note 2 (A5 - 880Hz)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
+    gain2.gain.setValueAtTime(0.45, ctx.currentTime + 0.15);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(ctx.currentTime + 0.15);
+    osc2.stop(ctx.currentTime + 0.6);
+  } catch (err) {
+    console.warn('Audio alert error:', err);
+  }
+}
+
+function showAdminLiveToast(title, message, iconClass = 'fa-bell', iconBg = '#C85C32') {
+  let container = document.getElementById('admin-toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'admin-toast-container';
+    container.style.cssText = 'position: fixed; top: 1.5rem; right: 1.5rem; z-index: 99999; display: flex; flex-direction: column; gap: 0.75rem; pointer-events: none;';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.style.cssText = 'pointer-events: auto; min-width: 320px; max-width: 420px; background: rgba(15, 44, 89, 0.96); backdrop-filter: blur(12px); color: #FFFFFF; border-radius: 14px; padding: 1rem 1.25rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2); display: flex; align-items: flex-start; gap: 0.85rem; transform: translateX(120%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);';
+
+  toast.innerHTML = `
+    <div style="background: ${iconBg}; color: #FFFFFF; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.15rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+      <i class="fa-solid ${iconClass}"></i>
+    </div>
+    <div style="flex-grow: 1;">
+      <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 0.2rem; color: #FFFFFF;">${title}</div>
+      <div style="font-size: 0.85rem; color: #CBD5E1; line-height: 1.4;">${message}</div>
+    </div>
+    <button onclick="this.parentElement.remove()" style="background: transparent; border: none; color: #94A3B8; font-size: 1rem; cursor: pointer; padding: 0.2rem;" title="Tutup">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  `;
+
+  container.appendChild(toast);
+  
+  // Play audio chime
+  playAdminNotificationSound();
+
+  // Slide in animation
+  requestAnimationFrame(() => {
+    toast.style.transform = 'translateX(0)';
+  });
+
+  // Auto remove after 7 seconds
+  setTimeout(() => {
+    if (toast.parentElement) {
+      toast.style.transform = 'translateX(120%)';
+      setTimeout(() => toast.remove(), 400);
+    }
+  }, 7000);
+}
+
+// Live Real-Time Event Listener for Admin Dashboard
+function initAdminLiveListeners() {
+  // 1. BroadcastChannel Listener (0ms instant cross-tab)
+  try {
+    if ('BroadcastChannel' in window) {
+      const bc = new BroadcastChannel('bluedoors_admin_events');
+      bc.onmessage = (event) => {
+        if (!event.data) return;
+        const { type, booking, order } = event.data;
+
+        if (type === 'NEW_BOOKING' && booking) {
+          handleIncomingBooking(booking);
+        } else if (type === 'NEW_ORDER' && order) {
+          handleIncomingOrder(order);
+        }
+      };
+    }
+  } catch(e) {}
+
+  // 2. LocalStorage Storage Event Listener (Cross-Tab sync)
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'bd_admin_bookings' && e.newValue) {
+      try {
+        const freshBookings = JSON.parse(e.newValue);
+        if (freshBookings.length > adminBookings.length) {
+          const newest = freshBookings[0];
+          handleIncomingBooking(newest);
+        }
+      } catch(err) {}
+    } else if (e.key === 'bd_admin_orders' && e.newValue) {
+      try {
+        const freshOrders = JSON.parse(e.newValue);
+        if (freshOrders.length > adminOrders.length) {
+          const newest = freshOrders[0];
+          handleIncomingOrder(newest);
+        }
+      } catch(err) {}
+    }
+  });
+
+  // 3. Polling Supabase Cloud every 8 seconds for remote devices (e.g. Smartphones)
+  setInterval(async () => {
+    if (window.BlueDoorsDB) {
+      try {
+        const dbBookings = await window.BlueDoorsDB.fetchBookings();
+        if (dbBookings && dbBookings.length > 0) {
+          const existingBookingIds = new Set(adminBookings.map(b => b.id));
+          const newRemoteBookings = dbBookings.filter(b => !existingBookingIds.has(b.id));
+          for (const nb of newRemoteBookings) {
+            handleIncomingBooking(nb);
+          }
+        }
+
+        const dbOrders = await window.BlueDoorsDB.fetchOrders();
+        if (dbOrders && dbOrders.length > 0) {
+          const existingOrderIds = new Set(adminOrders.map(o => o.id));
+          const newRemoteOrders = dbOrders.filter(o => !existingOrderIds.has(o.id));
+          for (const no of newRemoteOrders) {
+            handleIncomingOrder(no);
+          }
+        }
+      } catch(e) {}
+    }
+  }, 8000);
+}
+
+function handleIncomingBooking(booking) {
+  if (!adminBookings.some(b => b.id === booking.id)) {
+    adminBookings.unshift(booking);
+    localStorage.setItem('bd_admin_bookings', JSON.stringify(adminBookings));
+
+    renderKPIs();
+    renderOverviewBookings();
+    renderBookingTable();
+
+    showAdminLiveToast(
+      '📅 RESERVASI MEJA BARU!',
+      `Tamu <strong>${booking.name}</strong> baru saja reservasi (${booking.guests} orang — ${booking.date} ${booking.time}).`,
+      'fa-calendar-check',
+      '#C85C32'
+    );
+  }
+}
+
+function handleIncomingOrder(order) {
+  if (!adminOrders.some(o => o.id === order.id)) {
+    adminOrders.unshift(order);
+    localStorage.setItem('bd_admin_orders', JSON.stringify(adminOrders));
+
+    renderKPIs();
+    renderOrderTable();
+
+    showAdminLiveToast(
+      '🛒 TRANSAKSI PESANAN BARU!',
+      `Pesanan baru dari <strong>${order.customer_name || 'Pelanggan'}</strong> seharga <strong>${formatIDR(order.total_amount || 0)}</strong> (${order.order_type || 'Dine-in'}).`,
+      'fa-cart-shopping',
+      '#059669'
+    );
+  }
 }

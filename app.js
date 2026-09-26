@@ -290,6 +290,9 @@ function initCheckoutModal() {
         window.BlueDoorsDB.insertOrder(localOrderObj);
       }
 
+      // Broadcast live event to Admin Dashboard
+      broadcastAdminEvent({ type: 'NEW_ORDER', order: localOrderObj });
+
       try {
         const response = await fetch(`${API_BASE}/orders/checkout`, {
           method: 'POST',
@@ -399,7 +402,16 @@ function initBookingModal() {
 
         const rsvRef = (data.data && data.data.id) ? data.data.id : ('BD-RSV-' + Math.floor(100000 + Math.random() * 900000));
         const newBooking = { id: rsvRef, name, phone, date, time, guests, area, status: 'Pending' };
+
+        // Save to localStorage as well
+        const currentBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || [];
+        currentBookings.unshift(newBooking);
+        localStorage.setItem('bd_admin_bookings', JSON.stringify(currentBookings));
+
         if (window.BlueDoorsDB) window.BlueDoorsDB.insertBooking(newBooking);
+
+        // Broadcast live event to Admin Dashboard
+        broadcastAdminEvent({ type: 'NEW_BOOKING', booking: newBooking });
 
         closeModal('booking-modal');
         bookingForm.reset();
@@ -408,7 +420,16 @@ function initBookingModal() {
       } catch (err) {
         const rsvRef = 'BD-RSV-' + Math.floor(100000 + Math.random() * 900000);
         const newBooking = { id: rsvRef, name, phone, date, time, guests, area, status: 'Pending' };
+
+        // Save to localStorage as well
+        const currentBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || [];
+        currentBookings.unshift(newBooking);
+        localStorage.setItem('bd_admin_bookings', JSON.stringify(currentBookings));
+
         if (window.BlueDoorsDB) window.BlueDoorsDB.insertBooking(newBooking);
+
+        // Broadcast live event to Admin Dashboard
+        broadcastAdminEvent({ type: 'NEW_BOOKING', booking: newBooking });
 
         closeModal('booking-modal');
         bookingForm.reset();
@@ -417,6 +438,17 @@ function initBookingModal() {
       }
     });
   }
+}
+
+// Broadcast Live Admin Event
+function broadcastAdminEvent(eventPayload) {
+  try {
+    if ('BroadcastChannel' in window) {
+      const bc = new BroadcastChannel('bluedoors_admin_events');
+      bc.postMessage(eventPayload);
+      bc.close();
+    }
+  } catch (e) {}
 }
 
 // Modal Helpers
