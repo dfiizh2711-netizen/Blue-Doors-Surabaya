@@ -65,6 +65,31 @@ window.BlueDoorsDB = {
   },
 
   /**
+   * Delete user by ID from Supabase Cloud
+   */
+  async deleteUser(userId) {
+    if (!supabaseClient) return false;
+    try {
+      let res = await supabaseClient.from('bluedoors_users').delete().eq('id', userId);
+      if (res.error) {
+        res = await supabaseClient.schema('bluedoors').from('users').delete().eq('id', userId);
+      }
+      if (res.error) {
+        res = await supabaseClient.from('users').delete().eq('id', userId);
+      }
+      if (res.error) {
+        console.error('❌ Supabase deleteUser Error:', res.error.message || res.error);
+      } else {
+        console.log('✅ Supabase deleteUser Success for ID:', userId);
+      }
+      return !res.error;
+    } catch (err) {
+      console.error('Supabase deleteUser error:', err);
+      return false;
+    }
+  },
+
+  /**
    * Resilient booking insertion across schemas
    */
   async insertBooking(bookingObj) {

@@ -52,6 +52,23 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// DELETE user by ID
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (supabase) {
+      await supabase.from('bluedoors_users').delete().eq('id', id);
+      await supabase.from('users').delete().eq('id', id);
+    }
+    const idx = DB_STORE.users.findIndex(u => u.id === id);
+    if (idx !== -1) DB_STORE.users.splice(idx, 1);
+
+    res.json({ success: true, message: 'User berhasil dihapus.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // POST customer login
 router.post('/login', async (req, res) => {
   try {

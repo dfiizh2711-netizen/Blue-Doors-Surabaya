@@ -418,6 +418,17 @@ function renderUserTable() {
   const tbody = document.getElementById('admin-user-rows');
   if (!tbody) return;
 
+  if (adminUsers.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+          Belum ada data pelanggan / user yang terdaftar.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
   tbody.innerHTML = adminUsers.map(u => `
     <tr>
       <td style="font-weight: 700; color: var(--text-muted);">${u.id}</td>
@@ -427,14 +438,50 @@ function renderUserTable() {
       <td><strong>${u.totalVisits}</strong> kali</td>
       <td><span class="status-badge ${u.status === 'VIP' ? 'status-confirmed' : 'status-available'}">${u.status}</span></td>
       <td class="col-action">
-        <div class="action-btn-group">
+        <div class="action-btn-group" style="display: flex; gap: 0.5rem; align-items: center; justify-content: flex-start;">
           <a href="https://wa.me/${u.phone}" target="_blank" class="btn btn-secondary btn-sm btn-action-main" style="color: #059669; border-color: #A7F3D0; background-color: #ECFDF5; text-decoration: none;">
             <i class="fa-brands fa-whatsapp"></i> Hubungi WA
           </a>
+          <button onclick="deleteUser('${u.id}')" class="btn btn-secondary btn-sm" style="color: #DC2626; border-color: #FCA5A5; background-color: #FEF2F2;" title="Hapus User">
+            <i class="fa-solid fa-trash-can"></i> Hapus
+          </button>
         </div>
       </td>
     </tr>
   `).join('');
+}
+
+// Delete User Handler
+async function deleteUser(userId) {
+  const userObj = adminUsers.find(u => u.id === userId);
+  const nameDisplay = userObj ? userObj.name : userId;
+
+  if (!confirm(`Apakah Anda yakin ingin menghapus pelanggan "${nameDisplay}" (${userId})?\n\nData yang dihapus dari Supabase & website tidak dapat dikembalikan.`)) {
+    return;
+  }
+
+  // 1. Remove from local state & storage
+  adminUsers = adminUsers.filter(u => u.id !== userId);
+  localStorage.setItem('bd_admin_users', JSON.stringify(adminUsers));
+
+  // 2. Sync deletion to Supabase Cloud
+  if (window.BlueDoorsDB) {
+    try {
+      await window.BlueDoorsDB.deleteUser(userId);
+    } catch (err) {
+      console.warn('Supabase deleteUser error:', err);
+    }
+  }
+
+  // 3. Sync deletion to Backend API (if active)
+  try {
+    await fetch(`http://localhost:5000/api/users/${userId}`, { method: 'DELETE' });
+  } catch (e) {}
+
+  // 4. Update UI
+  renderUserTable();
+  renderKPIs();
+  alert(`User "${nameDisplay}" berhasil dihapus.`);
 }
 
 // Render Order Control Table
