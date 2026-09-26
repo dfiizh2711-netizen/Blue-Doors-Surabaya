@@ -376,6 +376,11 @@ function updateBookingStatus(id, newStatus) {
   if (b) {
     b.status = newStatus;
     localStorage.setItem('bd_admin_bookings', JSON.stringify(adminBookings));
+
+    if (window.BlueDoorsDB && (newStatus === 'Dikonfirmasi' || newStatus === 'Selesai')) {
+      window.BlueDoorsDB.notifyBookingCompleted(id, b);
+    }
+
     renderAllAdminData();
   }
 }
@@ -479,11 +484,15 @@ function renderOrderTable() {
 function toggleOrderStatus(id) {
   const order = adminOrders.find(o => o.id === id);
   if (order) {
-    order.payment_status = (order.payment_status === 'paid' || order.payment_status === 'Lunas') ? 'pending' : 'paid';
+    const isNowPaid = !(order.payment_status === 'paid' || order.payment_status === 'Lunas');
+    order.payment_status = isNowPaid ? 'paid' : 'pending';
     localStorage.setItem('bd_admin_orders', JSON.stringify(adminOrders));
 
     if (window.BlueDoorsDB) {
       window.BlueDoorsDB.updateOrderStatus(id, order.payment_status);
+      if (isNowPaid) {
+        window.BlueDoorsDB.notifyOrderCompleted(id, order);
+      }
     }
 
     // Also update backend if available
