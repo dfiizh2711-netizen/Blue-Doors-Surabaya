@@ -409,11 +409,11 @@ function renderOrderTable() {
 
     let statusBadge = '';
     if (isPaid) {
-      statusBadge = `<span class="status-badge status-available"><i class="fa-solid fa-check"></i> Lunas</span>`;
+      statusBadge = `<button type="button" class="status-badge status-available" style="cursor: pointer; border: none; font-size: 0.8rem; padding: 0.3rem 0.75rem;" onclick="toggleOrderStatus('${o.id}')" title="Klik untuk ubah ke Pending"><i class="fa-solid fa-check"></i> Lunas</button>`;
     } else if (isFailed) {
-      statusBadge = `<span class="status-badge status-empty"><i class="fa-solid fa-xmark"></i> Batal</span>`;
+      statusBadge = `<button type="button" class="status-badge status-empty" style="cursor: pointer; border: none; font-size: 0.8rem; padding: 0.3rem 0.75rem;" onclick="toggleOrderStatus('${o.id}')" title="Klik untuk ubah ke Lunas"><i class="fa-solid fa-xmark"></i> Batal</button>`;
     } else {
-      statusBadge = `<span class="status-badge status-pending"><i class="fa-solid fa-clock"></i> Pending</span>`;
+      statusBadge = `<button type="button" class="status-badge status-pending" style="cursor: pointer; border: none; font-size: 0.8rem; padding: 0.3rem 0.75rem;" onclick="toggleOrderStatus('${o.id}')" title="Klik untuk ubah ke Lunas"><i class="fa-solid fa-clock"></i> Pending (Klik u/ Lunas)</button>`;
     }
 
     const cleanPhone = o.customer_phone ? o.customer_phone.replace(/[^0-9]/g, '') : '';
