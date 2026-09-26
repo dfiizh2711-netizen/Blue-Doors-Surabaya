@@ -561,16 +561,27 @@ function renderOrderTable() {
       ? o.items.map(i => `${i.qty}x ${i.name}`).join(', ')
       : 'Rincian Pesanan';
 
-    const isPaid = o.payment_status === 'paid' || o.payment_status === 'settlement' || o.payment_status === 'Lunas';
-    const isFailed = o.payment_status === 'failed' || o.payment_status === 'cancel' || o.payment_status === 'Batal';
+    const st = (o.payment_status || 'pending').toLowerCase();
 
     let statusBadge = '';
-    if (isPaid) {
-      statusBadge = `<button type="button" class="status-badge status-available" style="cursor: pointer; border: none; font-size: 0.8rem; padding: 0.3rem 0.75rem;" onclick="toggleOrderStatus('${o.id}')" title="Klik untuk ubah ke Pending"><i class="fa-solid fa-check"></i> Lunas</button>`;
-    } else if (isFailed) {
-      statusBadge = `<button type="button" class="status-badge status-empty" style="cursor: pointer; border: none; font-size: 0.8rem; padding: 0.3rem 0.75rem;" onclick="toggleOrderStatus('${o.id}')" title="Klik untuk ubah ke Lunas"><i class="fa-solid fa-xmark"></i> Batal</button>`;
+    let mainActionBtn = '';
+
+    if (st === 'confirmed' || st === 'diterima') {
+      statusBadge = `<span class="status-badge" style="background: #E0F2FE; color: #0369A1; font-weight: 700;"><i class="fa-solid fa-cookie-bite"></i> DITERIMA</span>`;
+      mainActionBtn = `<button class="btn btn-primary btn-sm" style="background-color: #2563EB; border-color: #2563EB;" onclick="advanceOrderStatus('${o.id}', 'ready')"><i class="fa-solid fa-bell-concierge"></i> Pesanan Siap Ambil</button>`;
+    } else if (st === 'ready' || st === 'siap' || st === 'siap ambil') {
+      statusBadge = `<span class="status-badge" style="background: #FEF3C7; color: #92400E; font-weight: 700;"><i class="fa-solid fa-bag-shopping"></i> SIAP DIAMBIL</span>`;
+      mainActionBtn = `<button class="btn btn-primary btn-sm" style="background-color: #059669; border-color: #059669;" onclick="advanceOrderStatus('${o.id}', 'paid')"><i class="fa-solid fa-circle-check"></i> Selesaikan Pesanan</button>`;
+    } else if (st === 'paid' || st === 'lunas' || st === 'settlement') {
+      statusBadge = `<span class="status-badge status-available" style="font-weight: 700;"><i class="fa-solid fa-check-double"></i> SELESAI / LUNAS</span>`;
+      mainActionBtn = `<button class="btn btn-secondary btn-sm" style="color: #64748B;" onclick="advanceOrderStatus('${o.id}', 'pending')">Reset Status</button>`;
+    } else if (st === 'failed' || st === 'cancel' || st === 'batal') {
+      statusBadge = `<span class="status-badge status-empty" style="font-weight: 700;"><i class="fa-solid fa-xmark"></i> BATAL</span>`;
+      mainActionBtn = `<button class="btn btn-primary btn-sm" style="background-color: #C85C32; border-color: #C85C32;" onclick="advanceOrderStatus('${o.id}', 'confirmed')"><i class="fa-solid fa-check"></i> Konfirmasi Pesanan</button>`;
     } else {
-      statusBadge = `<button type="button" class="status-badge status-pending" style="cursor: pointer; border: none; font-size: 0.8rem; padding: 0.3rem 0.75rem;" onclick="toggleOrderStatus('${o.id}')" title="Klik untuk ubah ke Lunas"><i class="fa-solid fa-clock"></i> Pending (Klik u/ Lunas)</button>`;
+      // Pending
+      statusBadge = `<span class="status-badge status-pending" style="font-weight: 700;"><i class="fa-solid fa-clock"></i> PENDING</span>`;
+      mainActionBtn = `<button class="btn btn-primary btn-sm" style="background-color: #C85C32; border-color: #C85C32;" onclick="advanceOrderStatus('${o.id}', 'confirmed')"><i class="fa-solid fa-check"></i> Konfirmasi Pesanan</button>`;
     }
 
     const cleanPhone = o.customer_phone ? o.customer_phone.replace(/[^0-9]/g, '') : '';
@@ -585,16 +596,14 @@ function renderOrderTable() {
         <td style="font-weight: 700; color: var(--primary-brand);">${formatIDR(o.total_amount || 0)}</td>
         <td>${statusBadge}</td>
         <td class="col-action">
-          <div class="action-btn-group">
-            <button class="btn ${isPaid ? 'btn-secondary' : 'btn-primary'} btn-sm btn-action-main" onclick="toggleOrderStatus('${o.id}')">
-              ${isPaid ? 'Set Pending' : 'Tandai Lunas'}
-            </button>
+          <div class="action-btn-group" style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+            ${mainActionBtn}
             ${cleanPhone ? `
-              <a href="https://wa.me/${cleanPhone}" target="_blank" class="btn btn-secondary btn-sm btn-action-secondary" style="color: #059669; border-color: #A7F3D0; background-color: #ECFDF5; text-decoration: none;" title="Hubungi WA">
+              <a href="https://wa.me/${cleanPhone}" target="_blank" class="btn btn-secondary btn-sm" style="color: #059669; border-color: #A7F3D0; background-color: #ECFDF5; text-decoration: none;" title="Hubungi WA">
                 <i class="fa-brands fa-whatsapp"></i>
               </a>
             ` : ''}
-            <button class="btn btn-secondary btn-sm btn-action-secondary" style="color: #DC2626; border-color: #FCA5A5; background-color: #FEF2F2;" onclick="deleteOrder('${o.id}')" title="Hapus Order">
+            <button class="btn btn-secondary btn-sm" style="color: #DC2626; border-color: #FCA5A5; background-color: #FEF2F2;" onclick="deleteOrder('${o.id}')" title="Hapus Order">
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -604,14 +613,21 @@ function renderOrderTable() {
   }).join('');
 }
 
-function toggleOrderStatus(id) {
+async function advanceOrderStatus(id, newStatus) {
   const order = adminOrders.find(o => o.id === id);
   if (order) {
-    order.payment_status = (order.payment_status === 'paid' || order.payment_status === 'Lunas') ? 'pending' : 'paid';
+    order.payment_status = newStatus;
     localStorage.setItem('bd_admin_orders', JSON.stringify(adminOrders));
 
+    // Update Admin UI immediately
+    renderKPIs();
+    renderOrderTable();
+
+    // Direct Client Sync to Supabase Cloud
     if (window.BlueDoorsDB) {
-      window.BlueDoorsDB.updateOrderStatus(id, order.payment_status);
+      try {
+        await window.BlueDoorsDB.updateOrderStatus(id, newStatus);
+      } catch(e) {}
     }
 
     // Broadcast live event across all open user browser tabs instantly (0ms)
@@ -622,7 +638,7 @@ function toggleOrderStatus(id) {
           type: 'ORDER_STATUS_CHANGED',
           orderId: id,
           customerName: order.customer_name || 'Pelanggan',
-          status: order.payment_status,
+          status: newStatus,
           totalAmount: order.total_amount,
           timestamp: Date.now()
         });
@@ -635,11 +651,18 @@ function toggleOrderStatus(id) {
       fetch(`http://localhost:5000/api/orders/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payment_status: order.payment_status })
+        body: JSON.stringify({ payment_status: newStatus })
       });
     } catch(e) {}
+  }
+}
 
-    renderAllAdminData();
+function toggleOrderStatus(id) {
+  const order = adminOrders.find(o => o.id === id);
+  if (order) {
+    const st = (order.payment_status || 'pending').toLowerCase();
+    const nextSt = (st === 'paid' || st === 'lunas') ? 'pending' : 'confirmed';
+    advanceOrderStatus(id, nextSt);
   }
 }
 

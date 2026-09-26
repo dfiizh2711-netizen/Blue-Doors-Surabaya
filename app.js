@@ -880,24 +880,79 @@ function clearAllNotifications() {
   }
 }
 
+// Web Audio API Chime Sound Synthesizer for User Notifier
+function playUserAudioChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+
+    // Note 1 (E5 - 659.25Hz)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(659.25, ctx.currentTime);
+    gain1.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.35);
+
+    // Note 2 (B5 - 987.77Hz)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(987.77, ctx.currentTime + 0.15);
+    gain2.gain.setValueAtTime(0.5, ctx.currentTime + 0.15);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.65);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(ctx.currentTime + 0.15);
+    osc2.stop(ctx.currentTime + 0.65);
+  } catch (e) {
+    console.warn('Audio play error:', e);
+  }
+}
+
 // Render Live Notification Banner on User Screen & Save to Inbox
 function showLiveOrderNotification(data) {
-  const isCompleted = data.status === 'paid' || data.status === 'Lunas' || data.status === 'settlement';
-  if (!isCompleted) return;
+  const status = data.status || 'confirmed';
+  
+  let titleText = 'STATUS PESANAN DIPERBARUI';
+  let descText = `Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> telah diperbarui oleh kasir/admin.`;
+  let iconClass = 'fa-bell-concierge';
+
+  if (status === 'confirmed' || status === 'Diterima') {
+    titleText = 'PESANAN ANDA DITERIMA!';
+    descText = `Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> telah dikonfirmasi & sedang diracik oleh barista Blue Doors.`;
+    iconClass = 'fa-cookie-bite';
+  } else if (status === 'ready' || status === 'Siap Ambil') {
+    titleText = 'PESANAN SIAP DIAMBIL!';
+    descText = `Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> sudah SIAP! Silakan ambil di counter / tunggu kurir.`;
+    iconClass = 'fa-bag-shopping';
+  } else if (status === 'paid' || status === 'Lunas' || status === 'settlement') {
+    titleText = 'PESANAN SELESAI & LUNAS!';
+    descText = `Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> telah diselesaikan. Terima kasih!`;
+    iconClass = 'fa-circle-check';
+  }
 
   // Save to notification history inbox!
   const notifId = 'NOTIF-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
   const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' · ' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
   const currentNotifs = getStoredNotifications();
-  const isDuplicate = currentNotifs.some(n => n.orderId === data.orderId && (Date.now() - (n.rawTime || 0) < 5000));
+  const isDuplicate = currentNotifs.some(n => n.orderId === data.orderId && n.status === status && (Date.now() - (n.rawTime || 0) < 5000));
 
   if (!isDuplicate) {
     currentNotifs.unshift({
       id: notifId,
       orderId: data.orderId || 'BD-ORD',
       customerName: data.customerName || 'Pelanggan',
-      status: data.status || 'paid',
+      title: titleText,
+      desc: descText,
+      status: status,
       timestamp: nowStr,
       rawTime: Date.now()
     });
@@ -908,8 +963,8 @@ function showLiveOrderNotification(data) {
   const existing = document.getElementById('live-order-notification-banner');
   if (existing) existing.remove();
 
-  // Play audio chime immediately!
-  playCompletionChime();
+  // Play audio chime sound immediately!
+  playUserAudioChime();
 
   const banner = document.createElement('div');
   banner.id = 'live-order-notification-banner';
@@ -920,16 +975,14 @@ function showLiveOrderNotification(data) {
   banner.innerHTML = `
     <div class="lon-content">
       <div class="lon-icon-box">
-        <i class="fa-solid fa-bell-concierge"></i>
+        <i class="fa-solid ${iconClass}"></i>
       </div>
       <div class="lon-text-body">
         <div class="lon-header">
-          <span class="lon-title">PESANAN SELESAI & LUNAS!</span>
+          <span class="lon-title">${titleText}</span>
           <span class="lon-badge">${data.orderId || 'BD-ORD'}</span>
         </div>
-        <p class="lon-desc">
-          Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> telah diselesaikan oleh kasir/admin. Selamat menikmati!
-        </p>
+        <p class="lon-desc">${descText}</p>
       </div>
       <button type="button" class="lon-close-btn" onclick="dismissLiveNotification()" aria-label="Tutup Notifikasi">
         <i class="fa-solid fa-xmark"></i>
@@ -967,7 +1020,7 @@ function initLiveOrderNotifier() {
     };
   }
 
-  // 2. LocalStorage Polling Fallback (Checks for status flips every 3 seconds)
+  // 2. LocalStorage Polling Fallback (Checks for status flips every 2 seconds)
   let lastSeenOrders = {};
   try {
     const initialOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [];
@@ -980,7 +1033,7 @@ function initLiveOrderNotifier() {
       currentOrders.forEach(o => {
         const prevStatus = lastSeenOrders[o.id];
         const newStatus = o.payment_status;
-        if (prevStatus && prevStatus !== newStatus && (newStatus === 'paid' || newStatus === 'Lunas')) {
+        if (prevStatus && prevStatus !== newStatus) {
           showLiveOrderNotification({
             orderId: o.id,
             customerName: o.customer_name || 'Pelanggan',
@@ -991,7 +1044,7 @@ function initLiveOrderNotifier() {
         lastSeenOrders[o.id] = newStatus;
       });
     } catch(e) {}
-  }, 3000);
+  }, 2000);
 
   // 3. Supabase Realtime Subscription (Cross-device websocket)
   if (window.BlueDoorsDB && window.BlueDoorsDB.client) {
@@ -999,7 +1052,7 @@ function initLiveOrderNotifier() {
       window.BlueDoorsDB.client
         .channel('public-orders-live')
         .on('postgres_changes', { event: 'UPDATE', schema: 'bluedoors', table: 'orders' }, payload => {
-          if (payload.new && (payload.new.payment_status === 'paid' || payload.new.payment_status === 'Lunas')) {
+          if (payload.new && payload.new.payment_status) {
             showLiveOrderNotification({
               orderId: payload.new.id,
               customerName: payload.new.customer_name || 'Pelanggan',
@@ -1009,7 +1062,7 @@ function initLiveOrderNotifier() {
           }
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bluedoors_orders' }, payload => {
-          if (payload.new && (payload.new.payment_status === 'paid' || payload.new.payment_status === 'Lunas')) {
+          if (payload.new && payload.new.payment_status) {
             showLiveOrderNotification({
               orderId: payload.new.id,
               customerName: payload.new.customer_name || 'Pelanggan',
