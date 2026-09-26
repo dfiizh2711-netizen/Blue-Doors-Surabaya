@@ -28,9 +28,7 @@ window.BlueDoorsDB = {
   async insertUser(userObj) {
     if (!supabaseClient) return null;
 
-    const uniqueId = (userObj.id && !userObj.id.startsWith('USR-00')) 
-      ? userObj.id 
-      : ('USR-' + Math.floor(10000 + Math.random() * 90000));
+    const uniqueId = userObj.id || ('USR-' + Math.floor(10000 + Math.random() * 90000));
 
     const phoneVal = String(userObj.phone || userObj.contact || '').trim();
 
@@ -198,17 +196,17 @@ window.BlueDoorsDB = {
 
       // 1. Users
       const dbUsers = await this.fetchUsers();
-      if (!dbUsers || dbUsers.length === 0) {
-        console.log('📦 Uploading users to Supabase Cloud...');
-        const localUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || [
-          { id: 'USR-001', name: 'Ahmad Rizky', phone: '6281234567891', favoriteArea: 'Indoor AC', totalVisits: 8, status: 'Aktif' },
-          { id: 'USR-002', name: 'Siti Sarah', phone: '6281987654321', favoriteArea: 'Outdoor Garden', totalVisits: 5, status: 'Aktif' },
-          { id: 'USR-003', name: 'Budi Pratama', phone: '6281345678902', favoriteArea: 'Espresso Bar', totalVisits: 12, status: 'VIP' },
-          { id: 'USR-004', name: 'Dewi Lestari', phone: '6281567890123', favoriteArea: 'Indoor AC', totalVisits: 3, status: 'Aktif' },
-          { id: 'USR-005', name: 'Hendra Gunawan', phone: '6281789012345', favoriteArea: 'Outdoor Garden', totalVisits: 15, status: 'VIP' },
-          { id: 'USR-006', name: 'abdul', phone: '6298756789', favoriteArea: 'Indoor AC', totalVisits: 1, status: 'Aktif' }
-        ];
-        for (const u of localUsers) {
+      const existingUserIds = new Set((dbUsers || []).map(u => u.id));
+      const localUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || [
+        { id: 'USR-001', name: 'Ahmad Rizky', phone: '6281234567891', favoriteArea: 'Indoor AC', totalVisits: 8, status: 'Aktif' },
+        { id: 'USR-002', name: 'Siti Sarah', phone: '6281987654321', favoriteArea: 'Outdoor Garden', totalVisits: 5, status: 'Aktif' },
+        { id: 'USR-003', name: 'Budi Pratama', phone: '6281345678902', favoriteArea: 'Espresso Bar', totalVisits: 12, status: 'VIP' },
+        { id: 'USR-004', name: 'Dewi Lestari', phone: '6281567890123', favoriteArea: 'Indoor AC', totalVisits: 3, status: 'Aktif' },
+        { id: 'USR-005', name: 'Hendra Gunawan', phone: '6281789012345', favoriteArea: 'Outdoor Garden', totalVisits: 15, status: 'VIP' }
+      ];
+
+      for (const u of localUsers) {
+        if (!existingUserIds.has(u.id)) {
           await this.insertUser(u);
         }
       }
