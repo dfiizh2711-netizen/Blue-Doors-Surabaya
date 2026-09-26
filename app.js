@@ -283,6 +283,11 @@ function initCheckoutModal() {
       currentOrders.unshift(localOrderObj);
       localStorage.setItem('bd_admin_orders', JSON.stringify(currentOrders));
 
+      // Direct Client Sync to Supabase Cloud
+      if (window.BlueDoorsDB) {
+        window.BlueDoorsDB.insertOrder(localOrderObj);
+      }
+
       try {
         const response = await fetch(`${API_BASE}/orders/checkout`, {
           method: 'POST',
@@ -310,6 +315,10 @@ function initCheckoutModal() {
                   orders[0].payment_status = 'paid';
                 }
                 localStorage.setItem('bd_admin_orders', JSON.stringify(orders));
+
+                if (window.BlueDoorsDB) {
+                  window.BlueDoorsDB.updateOrderStatus(data.orderId || localOrderRef, 'paid');
+                }
 
                 alert(`🎉 PEMBAYARAN MIDTRANS BERHASIL!\n\nNomor Pesanan: ${data.orderId || localOrderRef}\nStatus: Lunas\nTerima kasih, ${name}!`);
                 cart = [];
@@ -386,11 +395,19 @@ function initBookingModal() {
         closeModal('booking-modal');
         bookingForm.reset();
 
-        const rsvRef = data.data ? data.data.id : ('BD-RSV-' + Math.floor(100000 + Math.random() * 900000));
+        const rsvRef = (data.data && data.data.id) ? data.data.id : ('BD-RSV-' + Math.floor(100000 + Math.random() * 900000));
+        const newBooking = { id: rsvRef, name, phone, date, time, guests, area, status: 'Pending' };
+        if (window.BlueDoorsDB) window.BlueDoorsDB.insertBooking(newBooking);
+
+        closeModal('booking-modal');
+        bookingForm.reset();
         showToast(`Reservasi Meja #${rsvRef} Berhasil Ditentukan!`);
         alert(`☕ RESERVASI MEJA BERHASIL!\n\nKode Reservasi: ${rsvRef}\nNama: ${name}\nTanggal: ${date} (Pukul ${time})\nJumlah Tamu: ${guests} Orang\nArea Seating: ${area}\n\nLokasi: Blue Doors Surabaya\nKami menantikan kedatangan Anda!`);
       } catch (err) {
         const rsvRef = 'BD-RSV-' + Math.floor(100000 + Math.random() * 900000);
+        const newBooking = { id: rsvRef, name, phone, date, time, guests, area, status: 'Pending' };
+        if (window.BlueDoorsDB) window.BlueDoorsDB.insertBooking(newBooking);
+
         closeModal('booking-modal');
         bookingForm.reset();
         showToast(`Reservasi Meja #${rsvRef} Berhasil!`);
@@ -546,6 +563,11 @@ function initLoginModal() {
 
       currentUsers.push(newUser);
       localStorage.setItem('bd_admin_users', JSON.stringify(currentUsers));
+
+      // Direct Client Sync to Supabase Cloud
+      if (window.BlueDoorsDB) {
+        window.BlueDoorsDB.insertUser(newUser);
+      }
 
       try {
         await fetch(`${API_BASE}/users/register`, {

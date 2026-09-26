@@ -210,6 +210,35 @@ async function renderAllAdminData() {
     }
   } catch(e) {}
 
+  // Direct Supabase Client Sync
+  if (window.BlueDoorsDB) {
+    try {
+      const dbUsers = await window.BlueDoorsDB.fetchUsers();
+      if (dbUsers && dbUsers.length > 0) {
+        adminUsers = dbUsers.map(u => ({
+          id: u.id,
+          name: u.name,
+          phone: u.phone,
+          favoriteArea: u.favorite_area || u.favoriteArea || 'Indoor AC',
+          totalVisits: u.total_visits || u.totalVisits || 1,
+          status: u.status || 'Aktif'
+        }));
+      }
+
+      const dbOrders = await window.BlueDoorsDB.fetchOrders();
+      if (dbOrders && dbOrders.length > 0) {
+        adminOrders = dbOrders;
+      }
+
+      const dbBookings = await window.BlueDoorsDB.fetchBookings();
+      if (dbBookings && dbBookings.length > 0) {
+        adminBookings = dbBookings;
+      }
+    } catch(err) {
+      console.warn('Supabase fetch in admin failed:', err);
+    }
+  }
+
   renderKPIs();
   renderOverviewBookings();
   renderMenuTable();
@@ -452,6 +481,10 @@ function toggleOrderStatus(id) {
   if (order) {
     order.payment_status = (order.payment_status === 'paid' || order.payment_status === 'Lunas') ? 'pending' : 'paid';
     localStorage.setItem('bd_admin_orders', JSON.stringify(adminOrders));
+
+    if (window.BlueDoorsDB) {
+      window.BlueDoorsDB.updateOrderStatus(id, order.payment_status);
+    }
 
     // Also update backend if available
     try {
