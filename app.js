@@ -880,12 +880,28 @@ function clearAllNotifications() {
   }
 }
 
+// Mobile Smartphone AudioContext Unlocker
+let userAudioCtx = null;
+function unlockUserAudio() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx && !userAudioCtx) {
+      userAudioCtx = new AudioCtx();
+    }
+    if (userAudioCtx && userAudioCtx.state === 'suspended') {
+      userAudioCtx.resume();
+    }
+  } catch(e) {}
+}
+
+window.addEventListener('touchstart', unlockUserAudio, { passive: true });
+window.addEventListener('click', unlockUserAudio, { passive: true });
+
 // Web Audio API Chime Sound Synthesizer for User Notifier
 function playUserAudioChime() {
   try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    unlockUserAudio();
+    const ctx = userAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (ctx.state === 'suspended') ctx.resume();
 
     // Note 1 (E5 - 659.25Hz)
@@ -916,23 +932,23 @@ function playUserAudioChime() {
   }
 }
 
-// Render Live Notification Banner on User Screen & Save to Inbox
+// Render Live Notification Banner for Orders on User Screen & Save to Inbox
 function showLiveOrderNotification(data) {
-  const status = data.status || 'confirmed';
+  const status = (data.status || 'confirmed').toLowerCase();
   
   let titleText = 'STATUS PESANAN DIPERBARUI';
   let descText = `Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> telah diperbarui oleh kasir/admin.`;
   let iconClass = 'fa-bell-concierge';
 
-  if (status === 'confirmed' || status === 'Diterima') {
+  if (status === 'confirmed' || status === 'diterima') {
     titleText = 'PESANAN ANDA DITERIMA!';
     descText = `Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> telah dikonfirmasi & sedang diracik oleh barista Blue Doors.`;
     iconClass = 'fa-cookie-bite';
-  } else if (status === 'ready' || status === 'Siap Ambil') {
+  } else if (status === 'ready' || status === 'siap' || status === 'siap ambil') {
     titleText = 'PESANAN SIAP DIAMBIL!';
     descText = `Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> sudah SIAP! Silakan ambil di counter / tunggu kurir.`;
     iconClass = 'fa-bag-shopping';
-  } else if (status === 'paid' || status === 'Lunas' || status === 'settlement') {
+  } else if (status === 'paid' || status === 'lunas' || status === 'settlement') {
     titleText = 'PESANAN SELESAI & LUNAS!';
     descText = `Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> telah diselesaikan. Terima kasih!`;
     iconClass = 'fa-circle-check';
@@ -998,6 +1014,79 @@ function showLiveOrderNotification(data) {
   }, 10000);
 }
 
+// Render Live Notification Banner for Bookings on User Screen & Save to Inbox
+function showLiveBookingNotification(data) {
+  const status = data.status || 'Dikonfirmasi';
+  let titleText = 'RESERVASI MEJA DIKONFIRMASI!';
+  let descText = `Reservasi meja atas nama <strong>${data.name || 'Pelanggan'}</strong> (${data.guests || '1-2'} orang — ${data.date} ${data.time}) telah dikonfirmasi oleh cafe.`;
+  let iconClass = 'fa-calendar-check';
+
+  if (status === 'Selesai') {
+    titleText = 'RESERVASI MEJA SELESAI!';
+    descText = `Reservasi meja atas nama <strong>${data.name || 'Pelanggan'}</strong> telah selesai. Terima kasih telah berkunjung ke Blue Doors!`;
+    iconClass = 'fa-circle-check';
+  } else if (status === 'Batal' || status === 'Dibatalkan') {
+    titleText = 'RESERVASI MEJA DIBATALKAN';
+    descText = `Reservasi meja atas nama <strong>${data.name || 'Pelanggan'}</strong> telah dibatalkan.`;
+    iconClass = 'fa-calendar-xmark';
+  }
+
+  // Save to notification history inbox
+  const notifId = 'NOTIF-RSV-' + Date.now();
+  const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' · ' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+
+  const currentNotifs = getStoredNotifications();
+  const isDuplicate = currentNotifs.some(n => n.bookingId === data.id && n.status === status && (Date.now() - (n.rawTime || 0) < 5000));
+
+  if (!isDuplicate) {
+    currentNotifs.unshift({
+      id: notifId,
+      bookingId: data.id || 'BD-RSV',
+      customerName: data.name || 'Pelanggan',
+      title: titleText,
+      desc: descText,
+      status: status,
+      timestamp: nowStr,
+      rawTime: Date.now()
+    });
+    saveStoredNotifications(currentNotifs);
+  }
+
+  // Play audio chime
+  playUserAudioChime();
+
+  // Toast Banner
+  const existing = document.getElementById('live-order-notification-banner');
+  if (existing) existing.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'live-order-notification-banner';
+  banner.className = 'live-order-notification';
+  banner.setAttribute('role', 'alert');
+  banner.setAttribute('aria-live', 'assertive');
+
+  banner.innerHTML = `
+    <div class="lon-content">
+      <div class="lon-icon-box" style="background-color: var(--primary-navy);">
+        <i class="fa-solid ${iconClass}"></i>
+      </div>
+      <div class="lon-text-body">
+        <div class="lon-header">
+          <span class="lon-title">${titleText}</span>
+          <span class="lon-badge">${data.id || 'BD-RSV'}</span>
+        </div>
+        <p class="lon-desc">${descText}</p>
+      </div>
+      <button type="button" class="lon-close-btn" onclick="dismissLiveNotification()" aria-label="Tutup Notifikasi">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(banner);
+  setTimeout(() => dismissLiveNotification(), 10000);
+}
+
 function dismissLiveNotification() {
   const banner = document.getElementById('live-order-notification-banner');
   if (banner) {
@@ -1006,11 +1095,23 @@ function dismissLiveNotification() {
   }
 }
 
-// Live Listener Initialization (BroadcastChannel + Polling + Supabase Realtime)
+// Live Listener Initialization (BroadcastChannel + LocalStorage Polling + Active Cloud Supabase Polling)
 function initLiveOrderNotifier() {
   updateNotifBadgeCount();
 
-  // 1. BroadcastChannel for Instant Tab-to-Tab Broadcast (0ms latency)
+  let lastSeenOrders = {};
+  let lastSeenBookings = {};
+
+  // Initialize status cache
+  try {
+    const localOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [];
+    localOrders.forEach(o => { lastSeenOrders[o.id] = o.payment_status || 'pending'; });
+
+    const localBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || [];
+    localBookings.forEach(b => { lastSeenBookings[b.id] = b.status || 'Pending'; });
+  } catch(e) {}
+
+  // 1. BroadcastChannel for Instant Tab-to-Tab Broadcast (0ms latency on same device)
   if ('BroadcastChannel' in window) {
     const bc = new BroadcastChannel('bluedoors_orders_channel');
     bc.onmessage = (event) => {
@@ -1020,14 +1121,9 @@ function initLiveOrderNotifier() {
     };
   }
 
-  // 2. LocalStorage Polling Fallback (Checks for status flips every 2 seconds)
-  let lastSeenOrders = {};
-  try {
-    const initialOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [];
-    initialOrders.forEach(o => { lastSeenOrders[o.id] = o.payment_status; });
-  } catch(e) {}
-
-  setInterval(() => {
+  // 2. Active Cloud Polling every 4 seconds from Supabase Cloud DB (Cross-Device: Laptop Admin -> Smartphone User)
+  setInterval(async () => {
+    // A. Check LocalStorage status changes first
     try {
       const currentOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [];
       currentOrders.forEach(o => {
@@ -1043,39 +1139,52 @@ function initLiveOrderNotifier() {
         }
         lastSeenOrders[o.id] = newStatus;
       });
-    } catch(e) {}
-  }, 2000);
 
-  // 3. Supabase Realtime Subscription (Cross-device websocket)
-  if (window.BlueDoorsDB && window.BlueDoorsDB.client) {
-    try {
-      window.BlueDoorsDB.client
-        .channel('public-orders-live')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'bluedoors', table: 'orders' }, payload => {
-          if (payload.new && payload.new.payment_status) {
-            showLiveOrderNotification({
-              orderId: payload.new.id,
-              customerName: payload.new.customer_name || 'Pelanggan',
-              status: payload.new.payment_status,
-              totalAmount: payload.new.total_amount
-            });
-          }
-        })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bluedoors_orders' }, payload => {
-          if (payload.new && payload.new.payment_status) {
-            showLiveOrderNotification({
-              orderId: payload.new.id,
-              customerName: payload.new.customer_name || 'Pelanggan',
-              status: payload.new.payment_status,
-              totalAmount: payload.new.total_amount
-            });
-          }
-        })
-        .subscribe();
-    } catch(e) {
-      console.warn('Supabase Realtime subscription error:', e);
+      const currentBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || [];
+      currentBookings.forEach(b => {
+        const prevStatus = lastSeenBookings[b.id];
+        const newStatus = b.status;
+        if (prevStatus && prevStatus !== newStatus) {
+          showLiveBookingNotification(b);
+        }
+        lastSeenBookings[b.id] = newStatus;
+      });
+    } catch(e) {}
+
+    // B. Check Supabase Cloud DB for Cross-Device updates (Admin on laptop -> User on HP)
+    if (window.BlueDoorsDB) {
+      try {
+        const dbOrders = await window.BlueDoorsDB.fetchOrders();
+        if (dbOrders && dbOrders.length > 0) {
+          dbOrders.forEach(o => {
+            const prevStatus = lastSeenOrders[o.id];
+            const newStatus = o.payment_status;
+            if (prevStatus && prevStatus !== newStatus) {
+              showLiveOrderNotification({
+                orderId: o.id,
+                customerName: o.customer_name || 'Pelanggan',
+                status: newStatus,
+                totalAmount: o.total_amount
+              });
+            }
+            lastSeenOrders[o.id] = newStatus;
+          });
+        }
+
+        const dbBookings = await window.BlueDoorsDB.fetchBookings();
+        if (dbBookings && dbBookings.length > 0) {
+          dbBookings.forEach(b => {
+            const prevStatus = lastSeenBookings[b.id];
+            const newStatus = b.status;
+            if (prevStatus && prevStatus !== newStatus) {
+              showLiveBookingNotification(b);
+            }
+            lastSeenBookings[b.id] = newStatus;
+          });
+        }
+      } catch(e) {}
     }
-  }
+  }, 4000);
 }
 
 // Run live notifier listener when DOM loads
