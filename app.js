@@ -273,6 +273,11 @@ function initCheckoutModal() {
         created_at: new Date().toISOString()
       };
 
+      // Record order ID to session memory so this device receives live notifications for this order
+      const myOrders = JSON.parse(localStorage.getItem('bd_my_orders')) || [];
+      if (!myOrders.includes(localOrderRef)) myOrders.push(localOrderRef);
+      localStorage.setItem('bd_my_orders', JSON.stringify(myOrders));
+
       // Save order to bd_admin_orders in localStorage for Admin Dashboard visibility
       const currentOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [];
       currentOrders.unshift(localOrderObj);
@@ -399,6 +404,11 @@ function initBookingModal() {
 
         const rsvRef = (data.data && data.data.id) ? data.data.id : ('BD-RSV-' + Math.floor(100000 + Math.random() * 900000));
         const newBooking = { id: rsvRef, name, phone, date, time, guests, area, status: 'Pending' };
+
+        // Record booking ID to session memory so this device receives live notifications for this booking
+        const myBookings = JSON.parse(localStorage.getItem('bd_my_bookings')) || [];
+        if (!myBookings.includes(rsvRef)) myBookings.push(rsvRef);
+        localStorage.setItem('bd_my_bookings', JSON.stringify(myBookings));
 
         // Save to localStorage as well
         const currentBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || [];
@@ -900,6 +910,35 @@ function playCompletionChime() {
   }
 }
 
+// Target User & Session Notification Filter Helper
+function isTargetUserNotification(data) {
+  if (!data) return false;
+
+  const loggedUser = JSON.parse(localStorage.getItem('bd_logged_user'));
+  const myOrders = JSON.parse(localStorage.getItem('bd_my_orders')) || [];
+  const myBookings = JSON.parse(localStorage.getItem('bd_my_bookings')) || [];
+
+  const nameInput = String(data.customerName || data.customer_name || data.name || '').trim().toLowerCase();
+  const phoneInput = String(data.customerPhone || data.customer_phone || data.phone || '').replace(/[^0-9]/g, '');
+  const targetId = data.orderId || data.bookingId || data.id;
+
+  // 1. If user is logged in, verify if order name or phone matches logged user profile
+  if (loggedUser) {
+    const loggedName = String(loggedUser.name || '').trim().toLowerCase();
+    const loggedPhone = String(loggedUser.phone || '').replace(/[^0-9]/g, '');
+
+    if (loggedName && nameInput && (loggedName === nameInput || nameInput.includes(loggedName))) return true;
+    if (loggedPhone && phoneInput && (loggedPhone === phoneInput || phoneInput.endsWith(loggedPhone) || loggedPhone.endsWith(phoneInput))) return true;
+  }
+
+  // 2. Check if this order/booking ID belongs to this browser device's session orders
+  if (targetId) {
+    if (myOrders.includes(targetId) || myBookings.includes(targetId)) return true;
+  }
+
+  return false;
+}
+
 // Render Live Notification Banner on User Screen
 // Notification History Storage & UI Management
 function getStoredNotifications() {
@@ -919,7 +958,8 @@ function saveStoredNotifications(list) {
 }
 
 function updateNotifBadgeCount() {
-  const notifs = getStoredNotifications();
+  const rawNotifs = getStoredNotifications();
+  const notifs = rawNotifs.filter(n => isTargetUserNotification(n));
   const badges = document.querySelectorAll('.notif-badge-count');
   const count = notifs.length;
   badges.forEach(b => {
@@ -933,7 +973,8 @@ function renderNotificationList() {
   const container = document.getElementById('notif-body-list');
   if (!container) return;
 
-  const list = getStoredNotifications();
+  const rawList = getStoredNotifications();
+  const list = rawList.filter(n => isTargetUserNotification(n));
 
   if (!list || list.length === 0) {
     container.innerHTML = `
@@ -949,16 +990,16 @@ function renderNotificationList() {
   container.innerHTML = list.map(n => `
     <div class="notif-card-item" id="notif-item-${n.id}">
       <div class="notif-card-icon">
-        <i class="fa-solid fa-circle-check"></i>
+        <i class="fa-solid ${n.title && n.title.includes('DITERIMA') ? 'fa-cookie-bite' : (n.title && n.title.includes('SIAP') ? 'fa-bag-shopping' : 'fa-circle-check')}"></i>
       </div>
       <div class="notif-card-content">
         <div class="notif-card-header">
-          <span class="notif-card-title">PESANAN SELESAI</span>
+          <span class="notif-card-title">${n.title || 'STATUS PESANAN DIPERBARUI'}</span>
           <span class="notif-card-time">${n.timestamp || ''}</span>
         </div>
-        <div class="notif-card-badge">${n.orderId || 'BD-ORD'}</div>
+        <div class="notif-card-badge">${n.orderId || n.bookingId || 'BD-ORD'}</div>
         <p class="notif-card-msg">
-          Pesanan atas nama <strong>${n.customerName || 'Pelanggan'}</strong> telah diselesaikan & lunas.
+          ${n.desc || `Pesanan atas nama <strong>${n.customerName || 'Pelanggan'}</strong> telah diperbarui.`}
         </p>
       </div>
       <button type="button" class="btn-delete-notif" onclick="deleteSingleNotification('${n.id}')" title="Hapus Notifikasi Ini" aria-label="Hapus Notifikasi">
@@ -999,7 +1040,7 @@ function deleteSingleNotification(notifId) {
 }
 
 function clearAllNotifications() {
-  if (confirm('Apakah Anda yakin ingin menghapus seluruh riwayat notifikasi pesanan?')) {
+  if (confirm('Apakah Anda yakin ingin menghapus seluruh riwayat notifikasi pesanan Anda?')) {
     saveStoredNotifications([]);
   }
 }
@@ -1075,6 +1116,11 @@ try {
 
 // Render Live Notification Banner for Orders on User Screen & Save to Inbox
 function showLiveOrderNotification(data) {
+  // STRICT USER FILTER: Only notify if order belongs to logged-in user or current browser session!
+  if (!isTargetUserNotification(data)) {
+    return;
+  }
+
   const orderId = data.orderId || data.id || 'BD-ORD';
   const status = (data.status || 'confirmed').toLowerCase();
   const eventKey = `${orderId}_${status}`;
@@ -1161,6 +1207,11 @@ function showLiveOrderNotification(data) {
 
 // Render Live Notification Banner for Bookings on User Screen & Save to Inbox
 function showLiveBookingNotification(data) {
+  // STRICT USER FILTER: Only notify if booking belongs to logged-in user or current browser session!
+  if (!isTargetUserNotification(data, true)) {
+    return;
+  }
+
   const bookingId = data.id || data.bookingId || 'BD-RSV';
   const status = data.status || 'Dikonfirmasi';
   const eventKey = `${bookingId}_${String(status).toLowerCase()}`;
