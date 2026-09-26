@@ -103,8 +103,11 @@ function initAdminAuthForm() {
   if (form) {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const u = document.getElementById('gk-username').value;
-      const p = document.getElementById('gk-password').value;
+      const rawUser = document.getElementById('gk-username').value || '';
+      const rawPass = document.getElementById('gk-password').value || '';
+
+      const u = rawUser.trim().toLowerCase();
+      const p = rawPass.trim();
 
       if (u === 'admin' && p === 'admin123') {
         sessionStorage.setItem('bd_admin_session', 'true');
