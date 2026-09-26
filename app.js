@@ -245,28 +245,19 @@ function initCheckoutModal() {
   if (checkoutForm) {
     checkoutForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const submitBtn = checkoutForm.querySelector('button[type="submit"]');
+      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '<i class="fa-solid fa-paper-plane"></i> Kirim Pesanan';
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses Pesanan...';
+      }
+
       const name = document.getElementById('co-name').value;
       const phone = document.getElementById('co-phone').value;
       const method = document.getElementById('co-method').value;
 
       showToast('Memproses pesanan & gateway pembayaran Midtrans...', 'info');
-
-      // Save order to bd_admin_orders in localStorage for Admin Dashboard visibility
-      const currentOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [
-        {
-          id: 'BD-ORD-948120',
-          customer_name: 'Budi Santoso',
-          customer_phone: '6281234567890',
-          order_type: 'Dine-in / Minum di Tempat',
-          total_amount: 87000,
-          items: [
-            { id: 'p1', name: 'Kyoto Latte', price: 42000, qty: 1 },
-            { id: 'p2', name: 'Fleur Noire', price: 45000, qty: 1 }
-          ],
-          payment_status: 'paid',
-          created_at: new Date().toISOString()
-        }
-      ];
 
       const localOrderRef = 'BD-ORD-' + Math.floor(100000 + Math.random() * 900000);
       const grossAmount = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
@@ -278,10 +269,12 @@ function initCheckoutModal() {
         order_type: method,
         total_amount: grossAmount,
         items: [...cart],
-        payment_status: 'paid',
+        payment_status: 'pending',
         created_at: new Date().toISOString()
       };
 
+      // Save order to bd_admin_orders in localStorage for Admin Dashboard visibility
+      const currentOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [];
       currentOrders.unshift(localOrderObj);
       localStorage.setItem('bd_admin_orders', JSON.stringify(currentOrders));
 
@@ -305,20 +298,16 @@ function initCheckoutModal() {
         if (data.success && data.snapToken) {
           closeModal('checkout-modal');
 
-          // Trigger Midtrans Snap Popup if SDK is available
-          if (window.snap && typeof window.snap.pay === 'function') {
+          const isValidSnapToken = data.snapToken && !data.snapToken.startsWith('SANDBOX-TOKEN-');
+
+          // Trigger Midtrans Snap Popup if valid token and SDK available
+          if (isValidSnapToken && window.snap && typeof window.snap.pay === 'function') {
             window.snap.pay(data.snapToken, {
               onSuccess: function(result) {
                 showToast('Pembayaran Midtrans Berhasil!', 'success');
-
-                // Mark order as paid in localStorage so Admin Dashboard instantly shows Lunas
                 const orders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [];
                 const targetOrder = orders.find(o => o.id === data.orderId || o.id === localOrderRef);
-                if (targetOrder) {
-                  targetOrder.payment_status = 'paid';
-                } else if (orders.length > 0) {
-                  orders[0].payment_status = 'paid';
-                }
+                if (targetOrder) targetOrder.payment_status = 'paid';
                 localStorage.setItem('bd_admin_orders', JSON.stringify(orders));
 
                 if (window.BlueDoorsDB) {
@@ -332,37 +321,45 @@ function initCheckoutModal() {
               },
               onPending: function(result) {
                 showToast('Menunggu Pembayaran Midtrans', 'info');
-                alert(`⌛ MENUNGGU PEMBAYARAN\n\nNomor Pesanan: ${data.orderId}\nSilakan selesaikan pembayaran sesuai instruksi Midtrans.`);
+                alert(`⌛ MENUNGGU PEMBAYARAN\n\nNomor Pesanan: ${data.orderId || localOrderRef}\nSilakan selesaikan pembayaran sesuai instruksi Midtrans.`);
                 cart = [];
                 saveCart();
                 updateCartBadge();
               },
               onError: function(result) {
-                showToast('Pembayaran Gagal.', 'error');
+                showToast('Pembayaran Gagal / Dibatalkan.', 'error');
               },
               onClose: function() {
-                showToast('Jendela Pembayaran Midtrans Ditutup.', 'info');
+                showToast('Jendela Pembayaran Ditutup.', 'info');
+                cart = [];
+                saveCart();
+                updateCartBadge();
               }
             });
           } else {
-            // Fallback Popup
+            // Direct Order Confirmation Fallback
             cart = [];
             saveCart();
             updateCartBadge();
-            alert(`🎉 PESANAN BERHASIL DIBUAT!\n\nNomor Order: ${data.orderId}\nNama: ${name}\nSnap Token Midtrans: ${data.snapToken}\n\nStaf kami akan menghubungi Anda via WA.`);
+            showToast('Pesanan Berhasil Dikirim!', 'success');
+            alert(`🎉 PESANAN BERHASIL DIBUAT!\n\nNomor Order: ${data.orderId || localOrderRef}\nNama: ${name}\nTipe: ${method}\n\nStaf kasir kami akan segera memproses pesanan Anda.`);
           }
         } else {
           showToast(data.message || 'Gagal memproses pembayaran.', 'error');
         }
       } catch (err) {
         console.warn('Backend server offline, using local fallback execution.', err);
-        const orderRef = 'BD-ORD-' + Math.floor(100000 + Math.random() * 900000);
         closeModal('checkout-modal');
         cart = [];
         saveCart();
         updateCartBadge();
-        showToast(`Pesanan #${orderRef} Berhasil Ditentukan!`, 'success');
-        alert(`🎉 PESANAN BERHASIL DIBUAT!\n\nNomor Referensi: ${orderRef}\nNama Pemesan: ${name}\nNomor WA: ${phone}\nTipe Pemesanan: ${method}\n\nMerchant Midtrans ID: M294142139`);
+        showToast(`Pesanan #${localOrderRef} Berhasil Dibuat!`, 'success');
+        alert(`🎉 PESANAN BERHASIL DIBUAT!\n\nNomor Referensi: ${localOrderRef}\nNama Pemesan: ${name}\nNomor WA: ${phone}\nTipe Pemesanan: ${method}\n\nMerchant Midtrans ID: M294142139`);
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnHtml;
+        }
       }
     });
   }

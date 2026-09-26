@@ -2,16 +2,22 @@ import midtransClient from 'midtrans-client';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Initialize Midtrans Snap client strictly from environment variables
+const SERVER_KEY = process.env.MIDTRANS_SERVER_KEY || '';
+const CLIENT_KEY = process.env.MIDTRANS_CLIENT_KEY || '';
+const IS_PRODUCTION = process.env.MIDTRANS_IS_PRODUCTION === 'true';
+
+// Initialize Midtrans Snap client
 export const snap = new midtransClient.Snap({
-  isProduction: process.env.MIDTRANS_IS_PRODUCTION === 'true',
-  serverKey: process.env.MIDTRANS_SERVER_KEY,
-  clientKey: process.env.MIDTRANS_CLIENT_KEY
+  isProduction: IS_PRODUCTION,
+  serverKey: SERVER_KEY,
+  clientKey: CLIENT_KEY
 });
 
-// Initialize Midtrans Core API client strictly from environment variables
+// Initialize Midtrans Core API client
 export const coreApi = new midtransClient.CoreApi({
-  isProduction: process.env.MIDTRANS_IS_PRODUCTION === 'true',
-  serverKey: process.env.MIDTRANS_SERVER_KEY,
-  clientKey: process.env.MIDTRANS_CLIENT_KEY
+  isProduction: IS_PRODUCTION,
+  serverKey: SERVER_KEY,
+  clientKey: CLIENT_KEY
 });
+
+
