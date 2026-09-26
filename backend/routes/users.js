@@ -73,17 +73,50 @@ router.delete('/:id', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email / WhatsApp dan kata sandi wajib diisi.' });
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Nama / Nomor HP wajib diisi.' });
     }
 
-    const user = DB_STORE.users.find(u => u.phone === email || u.name.toLowerCase() === email.toLowerCase()) || {
-      id: 'USR-TEMP',
-      name: email.split('@')[0],
-      phone: email
-    };
+    const searchVal = String(email).trim().toLowerCase();
+    const cleanSearchPhone = searchVal.replace(/[^0-9]/g, '');
 
-    res.json({ success: true, message: 'Login berhasil.', user });
+    let foundUser = null;
+
+    // 1. Search in Supabase DB
+    if (supabase) {
+      try {
+        let { data } = await supabase.from('bluedoors_users').select('*');
+        if (!data || data.length === 0) {
+          const resOld = await supabase.from('users').select('*');
+          data = resOld.data;
+        }
+        if (data && data.length > 0) {
+          foundUser = data.find(u => 
+            (u.name && u.name.toLowerCase() === searchVal) ||
+            (u.phone && u.phone.replace(/[^0-9]/g, '') === cleanSearchPhone) ||
+            (u.id && u.id.toLowerCase() === searchVal)
+          );
+        }
+      } catch (e) {}
+    }
+
+    // 2. Fallback search in DB_STORE
+    if (!foundUser) {
+      foundUser = DB_STORE.users.find(u =>
+        (u.name && u.name.toLowerCase() === searchVal) ||
+        (u.phone && u.phone.replace(/[^0-9]/g, '') === cleanSearchPhone) ||
+        (u.id && u.id.toLowerCase() === searchVal)
+      );
+    }
+
+    if (!foundUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Akun belum terdaftar! Silakan lakukan pendaftaran akun baru terlebih dahulu.'
+      });
+    }
+
+    res.json({ success: true, message: 'Login berhasil.', user: foundUser });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

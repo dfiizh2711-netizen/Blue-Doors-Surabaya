@@ -531,70 +531,192 @@ function initLoginModal() {
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
 
+  // Check if user is already logged in on page load
+  const checkLoggedInUser = () => {
+    try {
+      const loggedUser = JSON.parse(localStorage.getItem('bd_logged_user'));
+      if (loggedUser && loggedUser.name) {
+        loginBtns.forEach(btn => {
+          btn.innerHTML = `<i class="fa-solid fa-user-check"></i> <span>${loggedUser.name}</span>`;
+        });
+
+        // Auto fill checkout and booking form fields if available
+        const coName = document.getElementById('co-name');
+        const coPhone = document.getElementById('co-phone');
+        if (coName && !coName.value) coName.value = loggedUser.name;
+        if (coPhone && !coPhone.value) coPhone.value = loggedUser.phone || '';
+
+        const bkName = document.getElementById('bk-name');
+        const bkPhone = document.getElementById('bk-phone');
+        if (bkName && !bkName.value) bkName.value = loggedUser.name;
+        if (bkPhone && !bkPhone.value) bkPhone.value = loggedUser.phone || '';
+      }
+    } catch(e) {}
+  };
+
+  checkLoggedInUser();
+
   loginBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      openModal('login-modal');
+      const loggedUser = JSON.parse(localStorage.getItem('bd_logged_user'));
+      if (loggedUser) {
+        if (confirm(`Anda sedang masuk sebagai "${loggedUser.name}" (${loggedUser.phone || '-'}).\n\nApakah Anda ingin keluar (Logout)?`)) {
+          localStorage.removeItem('bd_logged_user');
+          loginBtns.forEach(b => {
+            b.innerHTML = `<i class="fa-solid fa-user"></i> <span>Masuk / Daftar</span>`;
+          });
+          showToast('Anda telah keluar dari akun.', 'info');
+        }
+      } else {
+        openModal('login-modal');
+      }
     });
   });
 
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const submitBtn = loginForm.querySelector('button[type="submit"]');
+      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : 'Masuk';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa Akun...';
+      }
+
       const emailInput = document.getElementById('login-email');
-      const val = emailInput ? emailInput.value : '';
+      const searchVal = emailInput ? emailInput.value.trim() : '';
+      const cleanPhone = searchVal.replace(/[^0-9]/g, '');
 
-      try {
-        await fetch(`${API_BASE}/users/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: val, password: '***' })
-        });
-      } catch (err) {}
+      if (!searchVal) {
+        showToast('Silakan isi Nama atau Nomor WhatsApp terlebih dahulu.', 'error');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = originalBtnHtml; }
+        return;
+      }
 
-      showToast(`Selamat datang kembali, ${val || 'Pelanggan'}!`, 'success');
+      let matchedUser = null;
+
+      // 1. Search in localStorage users
+      const localUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || [];
+      matchedUser = localUsers.find(u =>
+        (u.name && u.name.trim().toLowerCase() === searchVal.toLowerCase()) ||
+        (u.phone && cleanPhone && u.phone.replace(/[^0-9]/g, '') === cleanPhone) ||
+        (u.id && u.id.toLowerCase() === searchVal.toLowerCase())
+      );
+
+      // 2. Search in Supabase Cloud DB if not found in localStorage
+      if (!matchedUser && window.BlueDoorsDB) {
+        try {
+          const dbUsers = await window.BlueDoorsDB.fetchUsers();
+          if (dbUsers && dbUsers.length > 0) {
+            matchedUser = dbUsers.find(u =>
+              (u.name && u.name.trim().toLowerCase() === searchVal.toLowerCase()) ||
+              (u.phone && cleanPhone && u.phone.replace(/[^0-9]/g, '') === cleanPhone) ||
+              (u.id && u.id.toLowerCase() === searchVal.toLowerCase())
+            );
+          }
+        } catch(e) {}
+      }
+
+      // 3. Search in backend API if available
+      if (!matchedUser) {
+        try {
+          const response = await fetch(`${API_BASE}/users/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: searchVal, password: '***' })
+          });
+          const data = await response.json();
+          if (data.success && data.user) {
+            matchedUser = data.user;
+          }
+        } catch(err) {}
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml;
+      }
+
+      // IF NOT FOUND: Reject Login & Switch to Register!
+      if (!matchedUser) {
+        showToast('⚠️ Akun belum terdaftar! Silakan lakukan pendaftaran akun baru.', 'error');
+        alert(`❌ AKUN TIDAK DITEMUKAN!\n\nNama / Nomor HP "${searchVal}" belum terdaftar di database Blue Doors.\n\nSilakan klik "Daftar Akun Baru" terlebih dahulu untuk membuat akun.`);
+
+        const regName = document.getElementById('reg-name');
+        const regContact = document.getElementById('reg-contact');
+        if (isNaN(searchVal)) {
+          if (regName) regName.value = searchVal;
+        } else {
+          if (regContact) regContact.value = searchVal;
+        }
+
+        if (currentAuthMode === 'login') {
+          toggleAuthMode();
+        }
+        return;
+      }
+
+      // IF FOUND: Save Logged In State & Welcome User
+      localStorage.setItem('bd_logged_user', JSON.stringify(matchedUser));
+      showToast(`🎉 Selamat datang kembali, ${matchedUser.name || searchVal}!`, 'success');
       closeModal('login-modal');
-      loginBtns.forEach(btn => {
-        btn.innerHTML = `<i class="fa-solid fa-user-check"></i> <span>Akun Saya</span>`;
-      });
+      loginForm.reset();
+
+      checkLoggedInUser();
     });
   }
 
   if (registerForm) {
     registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const name = document.getElementById('reg-name').value;
-      const contact = document.getElementById('reg-contact').value;
+      const submitBtn = registerForm.querySelector('button[type="submit"]');
+      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : 'Daftar Akun Baru';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses Pendaftaran...';
+      }
+
+      const name = document.getElementById('reg-name').value.trim();
+      const contact = document.getElementById('reg-contact').value.trim();
       const password = document.getElementById('reg-password').value;
       const passwordConfirm = document.getElementById('reg-password-confirm').value;
 
       if (password !== passwordConfirm) {
         showToast('Konfirmasi kata sandi tidak cocok!', 'error');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = originalBtnHtml; }
         return;
       }
 
-      // Save user to localStorage so Admin Dashboard immediately reflects new user
-      const currentUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || [
-        { id: 'USR-001', name: 'Ahmad Rizky', phone: '6281234567891', favoriteArea: 'Indoor AC', totalVisits: 8, status: 'Aktif' },
-        { id: 'USR-002', name: 'Siti Sarah', phone: '6281987654321', favoriteArea: 'Outdoor Garden', totalVisits: 5, status: 'Aktif' },
-        { id: 'USR-003', name: 'Budi Pratama', phone: '6281345678902', favoriteArea: 'Espresso Bar', totalVisits: 12, status: 'VIP' },
-        { id: 'USR-004', name: 'Dewi Lestari', phone: '6281567890123', favoriteArea: 'Indoor AC', totalVisits: 3, status: 'Aktif' },
-        { id: 'USR-005', name: 'Hendra Gunawan', phone: '6281789012345', favoriteArea: 'Outdoor Garden', totalVisits: 15, status: 'VIP' }
-      ];
+      const cleanPhone = contact.replace(/[^0-9]/g, '');
 
-      const cleanPhone = contact.trim();
+      // Check if user already exists
+      const localUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || [];
+      const alreadyExists = localUsers.some(u =>
+        (u.name && u.name.toLowerCase() === name.toLowerCase()) ||
+        (u.phone && cleanPhone && u.phone.replace(/[^0-9]/g, '') === cleanPhone)
+      );
+
+      if (alreadyExists) {
+        showToast('⚠️ Akun ini sudah terdaftar! Silakan langsung login.', 'error');
+        alert(`⚠️ AKUN SUDAH ADA!\n\nNama "${name}" atau nomor HP "${contact}" sudah terdaftar di database.\nSilakan gunakan menu "Masuk" untuk login.`);
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = originalBtnHtml; }
+        if (currentAuthMode === 'register') toggleAuthMode();
+        return;
+      }
+
       const uniqueId = 'USR-' + Math.floor(10000 + Math.random() * 90000);
       const newUser = {
         id: uniqueId,
-        name: name.trim(),
-        phone: cleanPhone,
+        name: name,
+        phone: contact,
         favoriteArea: 'Indoor AC',
         totalVisits: 1,
         status: 'Aktif'
       };
 
-      currentUsers.push(newUser);
-      localStorage.setItem('bd_admin_users', JSON.stringify(currentUsers));
+      localUsers.push(newUser);
+      localStorage.setItem('bd_admin_users', JSON.stringify(localUsers));
 
       // Direct Client Sync to Supabase Cloud
       if (window.BlueDoorsDB) {
@@ -611,13 +733,18 @@ function initLoginModal() {
         });
       } catch (err) {}
 
-      showToast(`Selamat ${name}, akun Anda berhasil dibuat!`, 'success');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml;
+      }
+
+      localStorage.setItem('bd_logged_user', JSON.stringify(newUser));
+      showToast(`🎉 Selamat ${name}, akun Anda berhasil terdaftar & langsung aktif!`, 'success');
+      alert(`🎉 PENDAFTARAN BERHASIL!\n\nID Pelanggan: ${uniqueId}\nNama: ${name}\nNomor HP: ${contact}\n\nAkun Anda kini resmi terdaftar di database Blue Doors Surabaya.`);
+
       closeModal('login-modal');
       registerForm.reset();
-
-      loginBtns.forEach(btn => {
-        btn.innerHTML = `<i class="fa-solid fa-user-check"></i> <span>Akun Saya</span>`;
-      });
+      checkLoggedInUser();
     });
   }
 }
