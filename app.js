@@ -300,7 +300,18 @@ function initCheckoutModal() {
             window.snap.pay(data.snapToken, {
               onSuccess: function(result) {
                 showToast('Pembayaran Midtrans Berhasil!', 'success');
-                alert(`🎉 PEMBAYARAN MIDTRANS BERHASIL!\n\nNomor Pesanan: ${data.orderId}\nStatus: Lunas\nTerima kasih, ${name}!`);
+
+                // Mark order as paid in localStorage so Admin Dashboard instantly shows Lunas
+                const orders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [];
+                const targetOrder = orders.find(o => o.id === data.orderId || o.id === localOrderRef);
+                if (targetOrder) {
+                  targetOrder.payment_status = 'paid';
+                } else if (orders.length > 0) {
+                  orders[0].payment_status = 'paid';
+                }
+                localStorage.setItem('bd_admin_orders', JSON.stringify(orders));
+
+                alert(`🎉 PEMBAYARAN MIDTRANS BERHASIL!\n\nNomor Pesanan: ${data.orderId || localOrderRef}\nStatus: Lunas\nTerima kasih, ${name}!`);
                 cart = [];
                 saveCart();
                 updateCartBadge();
