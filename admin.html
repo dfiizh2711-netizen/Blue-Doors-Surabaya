@@ -39,8 +39,15 @@
     }
     
     .admin-sidebar-header img {
-      height: 44px;
-      width: auto;
+      height: 46px;
+      width: 46px;
+      object-fit: contain;
+      background-color: #FFFFFF;
+      border-radius: 50%;
+      padding: 6px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      flex-shrink: 0;
     }
 
     .admin-sidebar-title {
@@ -349,7 +356,7 @@
   <div id="admin-auth-overlay" style="position: fixed; inset: 0; background: linear-gradient(135deg, #0F2C59 0%, #1F509A 100%); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 1.5rem;">
     <div style="background: var(--surface-white); width: 100%; max-width: 440px; border-radius: var(--radius-lg); padding: 2.5rem 2rem; box-shadow: var(--shadow-lg); border: 1px solid var(--border-subtle);">
       <div style="text-align: center; margin-bottom: 2rem;">
-        <img src="logo.png" alt="Blue Doors Logo" style="height: 64px; margin: 0 auto 1rem auto; object-fit: contain;">
+        <img src="logo.png" alt="Blue Doors Logo" style="height: 64px; width: 64px; background-color: #FFFFFF; border-radius: 50%; padding: 8px; margin: 0 auto 1rem auto; object-fit: contain; box-shadow: 0 4px 12px rgba(15, 44, 89, 0.2); border: 2px solid var(--border-subtle);">
         <h2 style="font-family: var(--font-heading); font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 0.25rem;">Portal Akses Staff & Admin</h2>
         <p style="font-size: 0.875rem; color: var(--text-muted);">Verifikasi otentikasi sebelum masuk ke Dashboard Admin Blue Doors.</p>
       </div>
