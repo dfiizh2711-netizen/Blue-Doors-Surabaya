@@ -929,10 +929,35 @@ function playUserAudioChime() {
   }
 }
 
+// Session Event Deduplication Tracker (Strictly prevents repetitive spam notifications)
+const notifiedOrderEvents = new Set();
+const notifiedBookingEvents = new Set();
+
+// Seed initial notifications already stored in localStorage into tracker
+try {
+  const existingInbox = getStoredNotifications();
+  existingInbox.forEach(n => {
+    if (n.orderId && n.status) {
+      notifiedOrderEvents.add(`${n.orderId}_${String(n.status).toLowerCase()}`);
+    }
+    if (n.bookingId && n.status) {
+      notifiedBookingEvents.add(`${n.bookingId}_${String(n.status).toLowerCase()}`);
+    }
+  });
+} catch(e) {}
+
 // Render Live Notification Banner for Orders on User Screen & Save to Inbox
 function showLiveOrderNotification(data) {
+  const orderId = data.orderId || data.id || 'BD-ORD';
   const status = (data.status || 'confirmed').toLowerCase();
-  
+  const eventKey = `${orderId}_${status}`;
+
+  // STRICT GUARD: If this exact status event was already notified to the user, DO NOT notify again!
+  if (notifiedOrderEvents.has(eventKey)) {
+    return;
+  }
+  notifiedOrderEvents.add(eventKey);
+
   let titleText = 'STATUS PESANAN DIPERBARUI';
   let descText = `Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> telah diperbarui oleh kasir/admin.`;
   let iconClass = 'fa-bell-concierge';
@@ -945,7 +970,7 @@ function showLiveOrderNotification(data) {
     titleText = 'PESANAN SIAP DIAMBIL!';
     descText = `Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> sudah SIAP! Silakan ambil di counter / tunggu kurir.`;
     iconClass = 'fa-bag-shopping';
-  } else if (status === 'paid' || status === 'lunas' || status === 'settlement') {
+  } else if (status === 'paid' || status === 'lunas' || status === 'settlement' || status === 'selesai') {
     titleText = 'PESANAN SELESAI & LUNAS!';
     descText = `Pesanan atas nama <strong>${data.customerName || 'Pelanggan'}</strong> telah diselesaikan. Terima kasih!`;
     iconClass = 'fa-circle-check';
@@ -956,21 +981,17 @@ function showLiveOrderNotification(data) {
   const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' · ' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
   const currentNotifs = getStoredNotifications();
-  const isDuplicate = currentNotifs.some(n => n.orderId === data.orderId && n.status === status && (Date.now() - (n.rawTime || 0) < 5000));
-
-  if (!isDuplicate) {
-    currentNotifs.unshift({
-      id: notifId,
-      orderId: data.orderId || 'BD-ORD',
-      customerName: data.customerName || 'Pelanggan',
-      title: titleText,
-      desc: descText,
-      status: status,
-      timestamp: nowStr,
-      rawTime: Date.now()
-    });
-    saveStoredNotifications(currentNotifs);
-  }
+  currentNotifs.unshift({
+    id: notifId,
+    orderId: orderId,
+    customerName: data.customerName || 'Pelanggan',
+    title: titleText,
+    desc: descText,
+    status: status,
+    timestamp: nowStr,
+    rawTime: Date.now()
+  });
+  saveStoredNotifications(currentNotifs);
 
   // Remove any existing toast banner first
   const existing = document.getElementById('live-order-notification-banner');
@@ -993,7 +1014,7 @@ function showLiveOrderNotification(data) {
       <div class="lon-text-body">
         <div class="lon-header">
           <span class="lon-title">${titleText}</span>
-          <span class="lon-badge">${data.orderId || 'BD-ORD'}</span>
+          <span class="lon-badge">${orderId}</span>
         </div>
         <p class="lon-desc">${descText}</p>
       </div>
@@ -1013,7 +1034,16 @@ function showLiveOrderNotification(data) {
 
 // Render Live Notification Banner for Bookings on User Screen & Save to Inbox
 function showLiveBookingNotification(data) {
+  const bookingId = data.id || data.bookingId || 'BD-RSV';
   const status = data.status || 'Dikonfirmasi';
+  const eventKey = `${bookingId}_${String(status).toLowerCase()}`;
+
+  // STRICT GUARD: If this booking event was already notified, DO NOT notify again!
+  if (notifiedBookingEvents.has(eventKey)) {
+    return;
+  }
+  notifiedBookingEvents.add(eventKey);
+
   let titleText = 'RESERVASI MEJA DIKONFIRMASI!';
   let descText = `Reservasi meja atas nama <strong>${data.name || 'Pelanggan'}</strong> (${data.guests || '1-2'} orang — ${data.date} ${data.time}) telah dikonfirmasi oleh cafe.`;
   let iconClass = 'fa-calendar-check';
@@ -1033,21 +1063,17 @@ function showLiveBookingNotification(data) {
   const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' · ' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
   const currentNotifs = getStoredNotifications();
-  const isDuplicate = currentNotifs.some(n => n.bookingId === data.id && n.status === status && (Date.now() - (n.rawTime || 0) < 5000));
-
-  if (!isDuplicate) {
-    currentNotifs.unshift({
-      id: notifId,
-      bookingId: data.id || 'BD-RSV',
-      customerName: data.name || 'Pelanggan',
-      title: titleText,
-      desc: descText,
-      status: status,
-      timestamp: nowStr,
-      rawTime: Date.now()
-    });
-    saveStoredNotifications(currentNotifs);
-  }
+  currentNotifs.unshift({
+    id: notifId,
+    bookingId: bookingId,
+    customerName: data.name || 'Pelanggan',
+    title: titleText,
+    desc: descText,
+    status: status,
+    timestamp: nowStr,
+    rawTime: Date.now()
+  });
+  saveStoredNotifications(currentNotifs);
 
   // Play audio chime
   playUserAudioChime();
@@ -1070,7 +1096,7 @@ function showLiveBookingNotification(data) {
       <div class="lon-text-body">
         <div class="lon-header">
           <span class="lon-title">${titleText}</span>
-          <span class="lon-badge">${data.id || 'BD-RSV'}</span>
+          <span class="lon-badge">${bookingId}</span>
         </div>
         <p class="lon-desc">${descText}</p>
       </div>
@@ -1099,7 +1125,7 @@ function initLiveOrderNotifier() {
   let lastSeenOrders = {};
   let lastSeenBookings = {};
 
-  // Initialize status cache
+  // Initialize status cache from localStorage & Supabase
   try {
     const localOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [];
     localOrders.forEach(o => { lastSeenOrders[o.id] = o.payment_status || 'pending'; });
@@ -1113,6 +1139,9 @@ function initLiveOrderNotifier() {
     const bc = new BroadcastChannel('bluedoors_orders_channel');
     bc.onmessage = (event) => {
       if (event.data && event.data.type === 'ORDER_STATUS_CHANGED') {
+        if (event.data.orderId && event.data.status) {
+          lastSeenOrders[event.data.orderId] = event.data.status;
+        }
         showLiveOrderNotification(event.data);
       }
     };
