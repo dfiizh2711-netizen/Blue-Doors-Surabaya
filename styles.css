@@ -558,7 +558,7 @@ a {
 /* Product Cards Grid */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr) !important;
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.75rem;
 }
 
@@ -1588,14 +1588,58 @@ a {
     min-height: 40px;
   }
 
-  /* Product Grid Mobile Reflow */
+  /* Product Grid Mobile Touch Carousel / Horizontal Slider */
   .product-grid {
-    grid-template-columns: 1fr;
-    gap: 1.25rem;
+    display: flex !important;
+    grid-template-columns: none !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    gap: 1.15rem !important;
+    padding: 0.5rem 0.25rem 1.25rem 0.25rem !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  .product-grid::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .product-card {
+    flex: 0 0 270px !important;
+    width: 270px !important;
+    min-width: 270px !important;
+    max-width: 270px !important;
+    scroll-snap-align: start !important;
+    border-radius: var(--radius-lg);
+  }
+
+  .product-img-wrapper {
+    height: 190px !important;
+    padding: 0.75rem !important;
   }
 
   .product-img-wrapper img {
-    height: 190px;
+    max-height: 155px !important;
+  }
+
+  .product-info {
+    padding: 1.15rem !important;
+  }
+
+  .product-title {
+    font-size: 1.15rem !important;
+    line-height: 1.3 !important;
+    margin-bottom: 0.4rem !important;
+    white-space: normal !important;
+  }
+
+  .product-desc {
+    font-size: 0.85rem !important;
+    line-height: 1.45 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
   }
 
   /* Booking Banner & Schedule Grid */
