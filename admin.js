@@ -33,13 +33,7 @@ const INITIAL_BOOKINGS = [
   { id: 'BD-RSV-102948', name: 'Dewi Lestari', phone: '081567890123', date: '2026-09-25', time: '10:00', guests: '3-4', area: 'Indoor AC', status: 'Pending' }
 ];
 
-const INITIAL_USERS = [
-  { id: 'USR-001', name: 'Ahmad Rizky', phone: '6281234567891', favoriteArea: 'Indoor AC', totalVisits: 8, status: 'Aktif' },
-  { id: 'USR-002', name: 'Siti Sarah', phone: '6281987654321', favoriteArea: 'Outdoor Garden', totalVisits: 5, status: 'Aktif' },
-  { id: 'USR-003', name: 'Budi Pratama', phone: '6281345678902', favoriteArea: 'Espresso Bar', totalVisits: 12, status: 'VIP' },
-  { id: 'USR-004', name: 'Dewi Lestari', phone: '6281567890123', favoriteArea: 'Indoor AC', totalVisits: 3, status: 'Aktif' },
-  { id: 'USR-005', name: 'Hendra Gunawan', phone: '6281789012345', favoriteArea: 'Outdoor Garden', totalVisits: 15, status: 'VIP' }
-];
+const INITIAL_USERS = [];
 
 const INITIAL_ORDERS = [
   {
@@ -203,13 +197,13 @@ async function renderAllAdminData() {
   try {
     const resUsers = await fetch('http://localhost:5000/api/users');
     const jsonUsers = await resUsers.json();
-    if (jsonUsers.success && jsonUsers.data && jsonUsers.data.length > 0) {
+    if (jsonUsers.success && Array.isArray(jsonUsers.data)) {
       adminUsers = jsonUsers.data;
     }
 
     const resOrders = await fetch('http://localhost:5000/api/orders');
     const jsonOrders = await resOrders.json();
-    if (jsonOrders.success && jsonOrders.data && jsonOrders.data.length > 0) {
+    if (jsonOrders.success && Array.isArray(jsonOrders.data)) {
       adminOrders = jsonOrders.data;
     }
   } catch(e) {}
@@ -218,38 +212,17 @@ async function renderAllAdminData() {
   if (window.BlueDoorsDB) {
     try {
       const dbUsers = await window.BlueDoorsDB.fetchUsers();
-      const localUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || INITIAL_USERS;
-      
-      let mergedUsersMap = new Map();
-      
-      // Add local users first
-      localUsers.forEach(u => {
-        mergedUsersMap.set(u.phone || u.id, {
+      if (Array.isArray(dbUsers)) {
+        adminUsers = dbUsers.map(u => ({
           id: u.id,
           name: u.name,
           phone: u.phone,
-          favoriteArea: u.favoriteArea || u.favorite_area || 'Indoor AC',
-          totalVisits: u.totalVisits || u.total_visits || 1,
+          favoriteArea: u.favorite_area || u.favoriteArea || 'Indoor AC',
+          totalVisits: u.total_visits || u.totalVisits || 1,
           status: u.status || 'Aktif'
-        });
-      });
-
-      // Add / override from Supabase DB
-      if (dbUsers && dbUsers.length > 0) {
-        dbUsers.forEach(u => {
-          mergedUsersMap.set(u.phone || u.id, {
-            id: u.id,
-            name: u.name,
-            phone: u.phone,
-            favoriteArea: u.favorite_area || u.favoriteArea || 'Indoor AC',
-            totalVisits: u.total_visits || u.totalVisits || 1,
-            status: u.status || 'Aktif'
-          });
-        });
+        }));
+        localStorage.setItem('bd_admin_users', JSON.stringify(adminUsers));
       }
-
-      adminUsers = Array.from(mergedUsersMap.values());
-      localStorage.setItem('bd_admin_users', JSON.stringify(adminUsers));
 
       const dbOrders = await window.BlueDoorsDB.fetchOrders();
       const localOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || INITIAL_ORDERS;

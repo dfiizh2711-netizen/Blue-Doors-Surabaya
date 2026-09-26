@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
         const resOld = await supabase.from('users').select('*').order('created_at', { ascending: false });
         data = resOld.data;
       }
-      if (data && data.length > 0) return res.json({ success: true, data });
+      if (data) return res.json({ success: true, data });
     }
     res.json({ success: true, data: DB_STORE.users });
   } catch (err) {

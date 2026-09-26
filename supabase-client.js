@@ -277,17 +277,9 @@ window.BlueDoorsDB = {
 
       // 1. Users
       const dbUsers = await this.fetchUsers();
-      const existingUserIds = new Set((dbUsers || []).map(u => u.id));
-      const localUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || [
-        { id: 'USR-001', name: 'Ahmad Rizky', phone: '6281234567891', favoriteArea: 'Indoor AC', totalVisits: 8, status: 'Aktif' },
-        { id: 'USR-002', name: 'Siti Sarah', phone: '6281987654321', favoriteArea: 'Outdoor Garden', totalVisits: 5, status: 'Aktif' },
-        { id: 'USR-003', name: 'Budi Pratama', phone: '6281345678902', favoriteArea: 'Espresso Bar', totalVisits: 12, status: 'VIP' },
-        { id: 'USR-004', name: 'Dewi Lestari', phone: '6281567890123', favoriteArea: 'Indoor AC', totalVisits: 3, status: 'Aktif' },
-        { id: 'USR-005', name: 'Hendra Gunawan', phone: '6281789012345', favoriteArea: 'Outdoor Garden', totalVisits: 15, status: 'VIP' }
-      ];
-
-      for (const u of localUsers) {
-        if (!existingUserIds.has(u.id)) {
+      if (!dbUsers || dbUsers.length === 0) {
+        const localUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || [];
+        for (const u of localUsers) {
           await this.insertUser(u);
         }
       }
