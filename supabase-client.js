@@ -1,6 +1,6 @@
 /**
  * Blue Doors Surabaya — Supabase Client SDK Integration (Frontend)
- * Direct real-time cloud database sync for static hosts like GitHub Pages
+ * Resilient Cloud Database Sync for Vercel & Static Frontends
  */
 
 const SUPABASE_URL = 'https://xhrwuhsiyjoeyafaipce.supabase.co';
@@ -23,82 +23,93 @@ window.BlueDoorsDB = {
   },
 
   /**
-   * Helper to write to schema 'bluedoors' with automatic fallback to schema 'public' (bluedoors_ prefix)
+   * Resilient user insertion across bluedoors schema and public schema
    */
   async insertUser(userObj) {
     if (!supabaseClient) return null;
-    const payload = {
+
+    const basicPayload = {
       id: userObj.id || ('USR-' + Math.floor(100 + Math.random() * 900)),
       name: userObj.name,
-      phone: userObj.phone,
-      favorite_area: userObj.favoriteArea || userObj.favorite_area || 'Indoor AC',
+      phone: String(userObj.phone || '').replace(/[^0-9]/g, '') || userObj.phone,
+      favorite_area: userObj.favoriteArea || userObj.favorite_area || 'Indoor AC'
+    };
+
+    const fullPayload = {
+      ...basicPayload,
       total_visits: userObj.totalVisits || userObj.total_visits || 1,
       status: userObj.status || 'Aktif'
     };
 
-    try {
-      // 1. Try bluedoors schema
-      const { data, error } = await supabaseClient
-        .schema('bluedoors')
-        .from('users')
-        .insert([payload])
-        .select();
-
-      if (!error && data) return data[0];
-
-      // 2. Fallback to public schema
-      const fallback = await supabaseClient
-        .from('bluedoors_users')
-        .insert([payload])
-        .select();
-      
-      return fallback.data ? fallback.data[0] : payload;
-    } catch (err) {
-      console.error('Supabase insertUser error:', err);
-      return null;
+    let res = await supabaseClient.schema('bluedoors').from('users').insert([fullPayload]).select();
+    if (res.error) {
+      res = await supabaseClient.schema('bluedoors').from('users').insert([basicPayload]).select();
     }
+    if (res.error) {
+      res = await supabaseClient.from('bluedoors_users').insert([fullPayload]).select();
+    }
+    if (res.error) {
+      res = await supabaseClient.from('users').insert([basicPayload]).select();
+    }
+
+    if (res.error) {
+      console.error('❌ Supabase insertUser Error:', res.error.message || res.error);
+    } else {
+      console.log('✅ Supabase insertUser Success:', res.data);
+    }
+    return res.data ? res.data[0] : null;
   },
 
+  /**
+   * Resilient booking insertion across schemas
+   */
   async insertBooking(bookingObj) {
     if (!supabaseClient) return null;
-    const payload = {
+
+    const basicPayload = {
       id: bookingObj.id || ('BD-RSV-' + Math.floor(100000 + Math.random() * 900000)),
       name: bookingObj.name,
-      phone: bookingObj.phone,
+      phone: String(bookingObj.phone || ''),
       date: bookingObj.date,
-      time: bookingObj.time,
+      time: bookingObj.time
+    };
+
+    const fullPayload = {
+      ...basicPayload,
       guests: bookingObj.guests || '1-2',
       area: bookingObj.area || 'Indoor AC',
       status: bookingObj.status || 'Pending'
     };
 
-    try {
-      const { data, error } = await supabaseClient
-        .schema('bluedoors')
-        .from('bookings')
-        .insert([payload])
-        .select();
-
-      if (!error && data) return data[0];
-
-      const fallback = await supabaseClient
-        .from('bluedoors_bookings')
-        .insert([payload])
-        .select();
-
-      return fallback.data ? fallback.data[0] : payload;
-    } catch (err) {
-      console.error('Supabase insertBooking error:', err);
-      return null;
+    let res = await supabaseClient.schema('bluedoors').from('bookings').insert([fullPayload]).select();
+    if (res.error) {
+      res = await supabaseClient.schema('bluedoors').from('bookings').insert([basicPayload]).select();
     }
+    if (res.error) {
+      res = await supabaseClient.from('bluedoors_bookings').insert([fullPayload]).select();
+    }
+    if (res.error) {
+      res = await supabaseClient.from('bookings').insert([basicPayload]).select();
+    }
+
+    if (res.error) {
+      console.error('❌ Supabase insertBooking Error:', res.error.message || res.error);
+    } else {
+      console.log('✅ Supabase insertBooking Success:', res.data);
+    }
+    return res.data ? res.data[0] : null;
   },
 
+  /**
+   * Resilient order insertion across schemas
+   */
   async insertOrder(orderObj) {
     if (!supabaseClient) return null;
+
     const payload = {
       id: orderObj.id || ('BD-ORD-' + Date.now()),
-      customer_name: orderObj.customer_name || orderObj.name,
-      customer_phone: orderObj.customer_phone || orderObj.phone,
+      customer_name: orderObj.customer_name || orderObj.name || 'Pelanggan',
+      customer_phone: String(orderObj.customer_phone || orderObj.phone || ''),
       order_type: orderObj.order_type || orderObj.orderType || 'Dine-in / Minum di Tempat',
       total_amount: orderObj.total_amount || orderObj.totalAmount || 0,
       items: orderObj.items || [],
@@ -107,123 +118,83 @@ window.BlueDoorsDB = {
       midtrans_redirect_url: orderObj.midtrans_redirect_url || null
     };
 
-    try {
-      const { data, error } = await supabaseClient
-        .schema('bluedoors')
-        .from('orders')
-        .insert([payload])
-        .select();
-
-      if (!error && data) return data[0];
-
-      const fallback = await supabaseClient
-        .from('bluedoors_orders')
-        .insert([payload])
-        .select();
-
-      return fallback.data ? fallback.data[0] : payload;
-    } catch (err) {
-      console.error('Supabase insertOrder error:', err);
-      return null;
+    let res = await supabaseClient.schema('bluedoors').from('orders').insert([payload]).select();
+    if (res.error) {
+      res = await supabaseClient.from('bluedoors_orders').insert([payload]).select();
     }
+    if (res.error) {
+      res = await supabaseClient.from('orders').insert([payload]).select();
+    }
+
+    if (res.error) {
+      console.error('❌ Supabase insertOrder Error:', res.error.message || res.error);
+    } else {
+      console.log('✅ Supabase insertOrder Success:', res.data);
+    }
+    return res.data ? res.data[0] : null;
   },
 
   async updateOrderStatus(orderId, status) {
     if (!supabaseClient) return;
     try {
-      await supabaseClient
-        .schema('bluedoors')
-        .from('orders')
-        .update({ payment_status: status })
-        .eq('id', orderId);
-
-      await supabaseClient
-        .from('bluedoors_orders')
-        .update({ payment_status: status })
-        .eq('id', orderId);
+      await supabaseClient.schema('bluedoors').from('orders').update({ payment_status: status }).eq('id', orderId);
+      await supabaseClient.from('bluedoors_orders').update({ payment_status: status }).eq('id', orderId);
+      await supabaseClient.from('orders').update({ payment_status: status }).eq('id', orderId);
     } catch (err) {
       console.error('Supabase updateOrderStatus error:', err);
     }
   },
 
   async fetchUsers() {
-    if (!supabaseClient) return null;
-    try {
-      const { data, error } = await supabaseClient
-        .schema('bluedoors')
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data && data.length > 0) return data;
-
-      const fallback = await supabaseClient
-        .from('bluedoors_users')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      return fallback.data || [];
-    } catch (err) {
-      return null;
+    if (!supabaseClient) return [];
+    let res = await supabaseClient.schema('bluedoors').from('users').select('*').order('created_at', { ascending: false });
+    if (res.error || !res.data) {
+      res = await supabaseClient.from('bluedoors_users').select('*').order('created_at', { ascending: false });
     }
+    if (res.error || !res.data) {
+      res = await supabaseClient.from('users').select('*').order('created_at', { ascending: false });
+    }
+    return res.data || [];
   },
 
   async fetchBookings() {
-    if (!supabaseClient) return null;
-    try {
-      const { data, error } = await supabaseClient
-        .schema('bluedoors')
-        .from('bookings')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data && data.length > 0) return data;
-
-      const fallback = await supabaseClient
-        .from('bluedoors_bookings')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      return fallback.data || [];
-    } catch (err) {
-      return null;
+    if (!supabaseClient) return [];
+    let res = await supabaseClient.schema('bluedoors').from('bookings').select('*').order('created_at', { ascending: false });
+    if (res.error || !res.data) {
+      res = await supabaseClient.from('bluedoors_bookings').select('*').order('created_at', { ascending: false });
     }
+    if (res.error || !res.data) {
+      res = await supabaseClient.from('bookings').select('*').order('created_at', { ascending: false });
+    }
+    return res.data || [];
   },
 
   async fetchOrders() {
-    if (!supabaseClient) return null;
-    try {
-      const { data, error } = await supabaseClient
-        .schema('bluedoors')
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data && data.length > 0) return data;
-
-      const fallback = await supabaseClient
-        .from('bluedoors_orders')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      return fallback.data || [];
-    } catch (err) {
-      return null;
+    if (!supabaseClient) return [];
+    let res = await supabaseClient.schema('bluedoors').from('orders').select('*').order('created_at', { ascending: false });
+    if (res.error || !res.data) {
+      res = await supabaseClient.from('bluedoors_orders').select('*').order('created_at', { ascending: false });
     }
+    if (res.error || !res.data) {
+      res = await supabaseClient.from('orders').select('*').order('created_at', { ascending: false });
+    }
+    return res.data || [];
   },
 
   /**
-   * Sync initial 6 users, bookings, and sample orders to Supabase if database is empty
+   * Upload all initial data into Supabase Cloud
    */
   async syncInitialSeedData() {
     if (!supabaseClient) return;
 
     try {
-      // 1. Sync Users if empty
-      const currentDbUsers = await this.fetchUsers();
-      if (!currentDbUsers || currentDbUsers.length === 0) {
-        console.log('📦 Syncing initial users to Supabase...');
-        const seedUsers = [
+      console.log('🔄 Checking Supabase Cloud sync...');
+
+      // 1. Users
+      const dbUsers = await this.fetchUsers();
+      if (!dbUsers || dbUsers.length === 0) {
+        console.log('📦 Uploading users to Supabase Cloud...');
+        const localUsers = JSON.parse(localStorage.getItem('bd_admin_users')) || [
           { id: 'USR-001', name: 'Ahmad Rizky', phone: '6281234567891', favoriteArea: 'Indoor AC', totalVisits: 8, status: 'Aktif' },
           { id: 'USR-002', name: 'Siti Sarah', phone: '6281987654321', favoriteArea: 'Outdoor Garden', totalVisits: 5, status: 'Aktif' },
           { id: 'USR-003', name: 'Budi Pratama', phone: '6281345678902', favoriteArea: 'Espresso Bar', totalVisits: 12, status: 'VIP' },
@@ -231,33 +202,31 @@ window.BlueDoorsDB = {
           { id: 'USR-005', name: 'Hendra Gunawan', phone: '6281789012345', favoriteArea: 'Outdoor Garden', totalVisits: 15, status: 'VIP' },
           { id: 'USR-006', name: 'abdul', phone: '6298756789', favoriteArea: 'Indoor AC', totalVisits: 1, status: 'Aktif' }
         ];
-
-        for (const u of seedUsers) {
+        for (const u of localUsers) {
           await this.insertUser(u);
         }
       }
 
-      // 2. Sync Bookings if empty
-      const currentDbBookings = await this.fetchBookings();
-      if (!currentDbBookings || currentDbBookings.length === 0) {
-        console.log('📅 Syncing initial bookings to Supabase...');
-        const seedBookings = [
+      // 2. Bookings
+      const dbBookings = await this.fetchBookings();
+      if (!dbBookings || dbBookings.length === 0) {
+        console.log('📅 Uploading bookings to Supabase Cloud...');
+        const localBookings = JSON.parse(localStorage.getItem('bd_admin_bookings')) || [
           { id: 'BD-RSV-849201', name: 'Ahmad Rizky', phone: '081234567891', date: '2026-09-24', time: '14:30', guests: '3-4', area: 'Indoor AC', status: 'Dikonfirmasi' },
           { id: 'BD-RSV-719302', name: 'Siti Sarah', phone: '081987654321', date: '2026-09-24', time: '16:00', guests: '5-8', area: 'Outdoor Garden', status: 'Pending' },
           { id: 'BD-RSV-391048', name: 'Budi Pratama', phone: '081345678902', date: '2026-09-24', time: '19:00', guests: '1-2', area: 'Espresso Bar', status: 'Dikonfirmasi' },
           { id: 'BD-RSV-102948', name: 'Dewi Lestari', phone: '081567890123', date: '2026-09-25', time: '10:00', guests: '3-4', area: 'Indoor AC', status: 'Pending' }
         ];
-
-        for (const b of seedBookings) {
+        for (const b of localBookings) {
           await this.insertBooking(b);
         }
       }
 
-      // 3. Sync Orders if empty
-      const currentDbOrders = await this.fetchOrders();
-      if (!currentDbOrders || currentDbOrders.length === 0) {
-        console.log('🛒 Syncing initial orders to Supabase...');
-        const seedOrders = [
+      // 3. Orders
+      const dbOrders = await this.fetchOrders();
+      if (!dbOrders || dbOrders.length === 0) {
+        console.log('🛒 Uploading orders to Supabase Cloud...');
+        const localOrders = JSON.parse(localStorage.getItem('bd_admin_orders')) || [
           {
             id: 'BD-ORD-1790397081279-86',
             customer_name: 'abdul',
@@ -293,18 +262,17 @@ window.BlueDoorsDB = {
             payment_status: 'pending'
           }
         ];
-
-        for (const o of seedOrders) {
+        for (const o of localOrders) {
           await this.insertOrder(o);
         }
       }
     } catch (err) {
-      console.error('Failed syncing initial seed data:', err);
+      console.error('Supabase seed sync error:', err);
     }
   }
 };
 
-// Execute automatic sync when loaded
+// Auto sync on page load
 document.addEventListener('DOMContentLoaded', () => {
   if (window.BlueDoorsDB) {
     window.BlueDoorsDB.syncInitialSeedData();
